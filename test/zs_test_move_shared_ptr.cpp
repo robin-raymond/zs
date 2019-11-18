@@ -1779,8 +1779,8 @@ namespace zsTest
   //---------------------------------------------------------------------------
   void testMoveSharedPtr() noexcept(false)
   {
-    MoveSharedPtrTestBasics().runAll();
-    MoveSharedPtrTestCppReference().runAll();
+    MoveSharedPtrTestBasics{}.runAll();
+    MoveSharedPtrTestCppReference{}.runAll();
   }
 
 }

@@ -32,6 +32,7 @@ namespace zsTest
 #define TEST(x) actualCheck(x, #x, __FILE__, __FUNCTION__, __LINE__)
 
   void testMoveSharedPtr() noexcept(false);
+  void testEnum() noexcept(false);
 
   void output(std::string_view testName) noexcept;
 

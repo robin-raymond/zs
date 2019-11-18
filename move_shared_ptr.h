@@ -22,6 +22,12 @@ namespace zs
 #endif //_DEBUG
 
   template <typename T>
+  using MoveSharedPtr = move_shared_ptr<T>;
+
+  template <typename T>
+  using MoveOnlySharedPtr = move_only_shared_ptr<T>;
+
+  template <typename T>
   class move_only_shared_ptr final
   {
   public:

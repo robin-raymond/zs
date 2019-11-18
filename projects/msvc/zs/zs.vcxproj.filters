@@ -6,5 +6,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\zs.h" />
     <ClInclude Include="..\..\..\move_shared_ptr.h" />
+    <ClInclude Include="..\..\..\log.h" />
+    <ClInclude Include="..\..\..\enum.h" />
   </ItemGroup>
 </Project>

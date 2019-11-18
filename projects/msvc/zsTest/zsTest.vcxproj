@@ -26,6 +26,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\test\main.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_common.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_enum.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_move_shared_ptr.cpp" />
   </ItemGroup>
   <ItemGroup>
