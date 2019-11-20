@@ -33,6 +33,8 @@ namespace zsTest
 
   void testMoveSharedPtr() noexcept(false);
   void testEnum() noexcept(false);
+  void testLog() noexcept(false);
+  void testTraits() noexcept(false);
 
   void output(std::string_view testName) noexcept;
 

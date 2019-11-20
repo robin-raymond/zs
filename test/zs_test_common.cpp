@@ -97,6 +97,8 @@ int runAllTests() noexcept
   try {
     testMoveSharedPtr();
     testEnum();
+    testLog();
+    testTraits();
   } catch (...) {
     std::cout << "ERROR: uncaught exception thrown!\n";
     TEST(!"uncaught exception");

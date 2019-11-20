@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <algorithm>
 #include <optional>
+#include <cstddef>
 
 namespace zs
 {
@@ -167,29 +168,32 @@ namespace zs
     public:
       using index_iterator = Iterator<size_type, VDirection>;
       using const_index_iterator = Iterator<const size_type, VDirection>;
+      using distance_type = std::ptrdiff_t;
+      // consider changing casting to a std::bit_cast instead of static_cast when C++20 is available
+      static_assert(sizeof(distance_type) == sizeof(size_type));
 
       constexpr Iterator() = default;
 
       template <typename T = const_index_iterator, typename std::enable_if_t<std::is_const_v<TIteratorEnumType>, T> * = nullptr>
-      constexpr Iterator(const T& value) noexcept { value_ = value.value_; }
-      constexpr Iterator(const index_iterator& value) noexcept { value_ = value.value_; }
+      constexpr Iterator(const const_index_iterator& value) noexcept : value_{ value.value_ } {}
+      constexpr Iterator(const index_iterator& value) noexcept : value_{ value.value_ } {}
 
       template <typename T = const_index_iterator, typename std::enable_if_t<std::is_const_v<TIteratorEnumType>, T> * = nullptr>
-      constexpr Iterator(T&& value) noexcept { value_ = value.value_; }
-      constexpr Iterator(index_iterator&& value) noexcept { value_ = value.value_; }
+      constexpr Iterator(const_index_iterator&& value) noexcept : value_{ value.value_ } {}
+      constexpr Iterator(index_iterator&& value) noexcept : value_{ value.value_ } {}
 
-      constexpr Iterator(const size_type& value) noexcept { value_ = value; }
-      constexpr Iterator(size_type&& value) noexcept { value_ = value; }
+      constexpr Iterator(const size_type& value) noexcept : value_{ value } {}
+      constexpr Iterator(size_type&& value) noexcept : value_{ value } {}
 
       template <typename T = const_index_iterator, typename std::enable_if_t<std::is_const_v<TIteratorEnumType>, T> * = nullptr>
-      constexpr auto& operator=(const T& value) noexcept { value_ = value.value_; return *this; };
+      constexpr auto& operator=(const const_index_iterator& value) noexcept { value_ = value.value_; return *this; };
       constexpr auto& operator=(index_iterator& value) noexcept { value_ = value.value_; return *this; };
 
       template <typename T = const_index_iterator, typename std::enable_if_t<std::is_const_v<TIteratorEnumType>, T> * = nullptr>
-      constexpr auto& operator=(T&& value) noexcept { value_ = value.value_; return *this; };
+      constexpr auto& operator=(const_index_iterator&& value) noexcept { value_ = value.value_; return *this; };
       constexpr auto& operator=(index_iterator&& value) noexcept { value_ = value.value_; return *this; };
 
-      [[nodiscard]] constexpr const auto operator*() const noexcept {
+      [[nodiscard]] constexpr decltype(auto) operator*() const noexcept {
         if constexpr (EnumOrder::Default == Order::value) {
           return entries_[value_];
         }
@@ -200,7 +204,9 @@ namespace zs
           return sortedEntriesByName_[value_];
         }
       }
-      constexpr auto& operator++() noexcept { 
+      [[nodiscard]] constexpr decltype(auto) operator->() const noexcept { return &(*(*this)); }
+
+      constexpr auto& operator++() noexcept {
         if constexpr (1 == VDirection)
           ++value_;
         else
@@ -215,8 +221,84 @@ namespace zs
         return *this;
       }
 
-      [[nodiscard]] constexpr auto operator==(const Iterator& value) const noexcept { return value_ == value.value_; }
-      [[nodiscard]] constexpr auto operator!=(const Iterator& value) const noexcept { return value_ != value.value_; }
+      [[nodiscard]] constexpr decltype(auto) operator[](distance_type distance) const noexcept {
+        auto temp{ *this };
+        temp += distance;
+        return *temp;
+      }
+
+      constexpr auto operator++(int) noexcept { auto temp{ *this }; ++(*this); return temp; }
+      constexpr auto operator--(int) noexcept { auto temp{ *this }; --(*this); return temp; }
+
+      [[nodiscard]]  constexpr decltype(auto) operator+(distance_type distance) const noexcept {
+        auto temp{ *this };
+        if constexpr (1 == VDirection)
+          temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) + distance);
+        else
+          temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
+        return temp;
+      }
+      [[nodiscard]] constexpr decltype(auto) operator-(distance_type distance) const noexcept {
+        auto temp{ *this };
+        if constexpr (1 == VDirection)
+          temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
+        else
+          temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) + distance);
+        return temp;
+      }
+
+      [[nodiscard]] friend constexpr decltype(auto) operator+(distance_type distance, const Iterator& value) noexcept {
+        auto temp{ value };
+        return temp + distance;
+      }
+      [[nodiscard]] friend constexpr decltype(auto) operator-(distance_type distance, const Iterator& value) noexcept {
+        auto temp{ value };
+        return temp + (static_cast<decltype(distance)>(-1) * distance);
+      }
+
+      [[nodiscard]] constexpr decltype(auto) operator+=(distance_type distance) const noexcept {
+        if constexpr (1 == VDirection)
+          value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) + distance);
+        else
+          value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
+        return *this;
+      }
+      [[nodiscard]] constexpr decltype(auto) operator-=(distance_type distance) const noexcept {
+        if constexpr (1 == VDirection)
+          value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
+        else
+          value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) + distance);
+        return *this;
+      }
+
+      [[nodiscard]] constexpr auto operator==(const const_index_iterator& value) const noexcept { return value_ == value.value_; }
+      [[nodiscard]] constexpr auto operator!=(const const_index_iterator& value) const noexcept { return value_ != value.value_; }
+
+      [[nodiscard]] constexpr auto operator<(const const_index_iterator& value) const noexcept {
+        if constexpr (1 == VDirection)
+          return static_cast<distance_type>(value_) < static_cast<distance_type>(value.value_);
+        else
+          return static_cast<distance_type>(value_) >= static_cast<distance_type>(value.value_);
+      }
+      [[nodiscard]] constexpr auto operator>(const const_index_iterator& value) const noexcept {
+        if constexpr (1 == VDirection)
+          return static_cast<distance_type>(value_) > static_cast<distance_type>(value.value_);
+        else
+          return static_cast<distance_type>(value_) <= static_cast<distance_type>(value.value_);
+      }
+
+      [[nodiscard]] constexpr auto operator<=(const const_index_iterator& value) const noexcept {
+        if constexpr (1 == VDirection)
+          return static_cast<distance_type>(value_) <= static_cast<distance_type>(value.value_);
+        else
+          return static_cast<distance_type>(value_) > static_cast<distance_type>(value.value_);
+      }
+      [[nodiscard]] constexpr auto operator>=(const const_index_iterator& value) const noexcept {
+        if constexpr (1 == VDirection)
+          return static_cast<distance_type>(value_) >= static_cast<distance_type>(value.value_);
+        else
+          return static_cast<distance_type>(value_) < static_cast<distance_type>(value.value_);
+      }
 
     private:
       size_type value_{ FirstIndex::value };

@@ -25,6 +25,7 @@
     <ClInclude Include="..\..\..\enum.h" />
     <ClInclude Include="..\..\..\log.h" />
     <ClInclude Include="..\..\..\move_shared_ptr.h" />
+    <ClInclude Include="..\..\..\traits.h" />
     <ClInclude Include="..\..\..\zs.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

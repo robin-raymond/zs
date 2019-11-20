@@ -5,6 +5,8 @@
     <ClCompile Include="..\..\..\test\zs_test_common.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_move_shared_ptr.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_enum.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_log.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_traits.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\test\common.h" />
