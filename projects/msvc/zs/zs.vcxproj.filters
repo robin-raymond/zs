@@ -9,5 +9,23 @@
     <ClInclude Include="..\..\..\log.h" />
     <ClInclude Include="..\..\..\enum.h" />
     <ClInclude Include="..\..\..\traits.h" />
+    <ClInclude Include="..\..\..\dependency\safeint.h">
+      <Filter>dependency</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\dependency\gsl.h">
+      <Filter>dependency</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\detail\detail_log.h">
+      <Filter>detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\reflect.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="dependency">
+      <UniqueIdentifier>{ca65aacd-1af4-4eee-a84f-1f43d6dc9954}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="detail">
+      <UniqueIdentifier>{0be57ce2-7f46-4a82-8366-c57585ab4612}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

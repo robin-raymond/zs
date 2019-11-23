@@ -99,6 +99,7 @@ int runAllTests() noexcept
     testEnum();
     testLog();
     testTraits();
+    testReflect();
   } catch (...) {
     std::cout << "ERROR: uncaught exception thrown!\n";
     TEST(!"uncaught exception");

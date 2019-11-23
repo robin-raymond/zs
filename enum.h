@@ -9,6 +9,8 @@
 #include <optional>
 #include <cstddef>
 
+#include "traits.h"
+
 namespace zs
 {
   enum class EnumOrder
@@ -18,7 +20,7 @@ namespace zs
     Value,
   };
 
-  template <typename TEnumType, std::size_t TotalEntries>
+  template <typename TEnumType, zs::size_type TotalEntries>
   struct EnumDeclare
   {
     using UnderlyingType = typename std::remove_const<typename std::underlying_type<TEnumType>::type>::type;
@@ -36,11 +38,13 @@ namespace zs
     inline static constexpr auto entries_ = TEnumDeclare{}();
 
   public:
-    using size_type = std::size_t;
+    using size_type = zs::size_type;
+    using index_type = zs::index_type;
+
     using Total = std::integral_constant<size_type, entries_.size()>;
 
-    using FirstIndex = std::integral_constant<size_type, 0>;
-    using LastIndex = std::integral_constant<size_type, Total::value>;
+    using FirstIndex = std::integral_constant<index_type, 0>;
+    using LastIndex = std::integral_constant<index_type, static_cast<index_type>(Total::value)>;
     using Order = std::integral_constant<EnumOrder, VOrder>;
 
   private:
@@ -152,11 +156,11 @@ namespace zs
     using Type = EnumTraits<TEnumType, TEnumDeclare, VOrder>;
     using UnderlyingType = typename std::remove_const<typename std::underlying_type<TEnumType>::type>::type;
     using EnumType = typename std::remove_const<TEnumType>::type;
-    using iterator = Iterator<size_type, 1>;
-    using const_iterator = Iterator<const size_type, 1>;
+    using iterator = Iterator<index_type, 1>;
+    using const_iterator = Iterator<const index_type, 1>;
 
-    using reverse_iterator = Iterator<size_type, -1>;
-    using reverse_const_iterator = Iterator<const size_type, -1>;
+    using reverse_iterator = Iterator<index_type, -1>;
+    using reverse_const_iterator = Iterator<const index_type, -1>;
 
     template <typename TIteratorEnumType, int VDirection>
     class Iterator
@@ -166,11 +170,10 @@ namespace zs
       friend class EnumTraits;
 
     public:
-      using index_iterator = Iterator<size_type, VDirection>;
-      using const_index_iterator = Iterator<const size_type, VDirection>;
-      using distance_type = std::ptrdiff_t;
-      // consider changing casting to a std::bit_cast instead of static_cast when C++20 is available
-      static_assert(sizeof(distance_type) == sizeof(size_type));
+      using index_type = zs::index_type;
+
+      using index_iterator = Iterator<index_type, VDirection>;
+      using const_index_iterator = Iterator<const index_type, VDirection>;
 
       constexpr Iterator() = default;
 
@@ -182,8 +185,8 @@ namespace zs
       constexpr Iterator(const_index_iterator&& value) noexcept : value_{ value.value_ } {}
       constexpr Iterator(index_iterator&& value) noexcept : value_{ value.value_ } {}
 
-      constexpr Iterator(const size_type& value) noexcept : value_{ value } {}
-      constexpr Iterator(size_type&& value) noexcept : value_{ value } {}
+      constexpr Iterator(const index_type& value) noexcept : value_{ value } {}
+      constexpr Iterator(index_type&& value) noexcept : value_{ value } {}
 
       template <typename T = const_index_iterator, typename std::enable_if_t<std::is_const_v<TIteratorEnumType>, T> * = nullptr>
       constexpr auto& operator=(const const_index_iterator& value) noexcept { value_ = value.value_; return *this; };
@@ -221,7 +224,7 @@ namespace zs
         return *this;
       }
 
-      [[nodiscard]] constexpr decltype(auto) operator[](distance_type distance) const noexcept {
+      [[nodiscard]] constexpr decltype(auto) operator[](index_type distance) const noexcept {
         auto temp{ *this };
         temp += distance;
         return *temp;
@@ -230,7 +233,7 @@ namespace zs
       constexpr auto operator++(int) noexcept { auto temp{ *this }; ++(*this); return temp; }
       constexpr auto operator--(int) noexcept { auto temp{ *this }; --(*this); return temp; }
 
-      [[nodiscard]]  constexpr decltype(auto) operator+(distance_type distance) const noexcept {
+      [[nodiscard]]  constexpr decltype(auto) operator+(index_type distance) const noexcept {
         auto temp{ *this };
         if constexpr (1 == VDirection)
           temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) + distance);
@@ -238,7 +241,7 @@ namespace zs
           temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
         return temp;
       }
-      [[nodiscard]] constexpr decltype(auto) operator-(distance_type distance) const noexcept {
+      [[nodiscard]] constexpr decltype(auto) operator-(index_type distance) const noexcept {
         auto temp{ *this };
         if constexpr (1 == VDirection)
           temp.value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
@@ -247,23 +250,23 @@ namespace zs
         return temp;
       }
 
-      [[nodiscard]] friend constexpr decltype(auto) operator+(distance_type distance, const Iterator& value) noexcept {
+      [[nodiscard]] friend constexpr decltype(auto) operator+(index_type distance, const Iterator& value) noexcept {
         auto temp{ value };
         return temp + distance;
       }
-      [[nodiscard]] friend constexpr decltype(auto) operator-(distance_type distance, const Iterator& value) noexcept {
+      [[nodiscard]] friend constexpr decltype(auto) operator-(index_type distance, const Iterator& value) noexcept {
         auto temp{ value };
         return temp + (static_cast<decltype(distance)>(-1) * distance);
       }
 
-      [[nodiscard]] constexpr decltype(auto) operator+=(distance_type distance) const noexcept {
+      [[nodiscard]] constexpr decltype(auto) operator+=(index_type distance) const noexcept {
         if constexpr (1 == VDirection)
           value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) + distance);
         else
           value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
         return *this;
       }
-      [[nodiscard]] constexpr decltype(auto) operator-=(distance_type distance) const noexcept {
+      [[nodiscard]] constexpr decltype(auto) operator-=(index_type distance) const noexcept {
         if constexpr (1 == VDirection)
           value_ = static_cast<decltype(value_)>(static_cast<decltype(distance)>(value_) - distance);
         else
@@ -276,32 +279,32 @@ namespace zs
 
       [[nodiscard]] constexpr auto operator<(const const_index_iterator& value) const noexcept {
         if constexpr (1 == VDirection)
-          return static_cast<distance_type>(value_) < static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) < static_cast<index_type>(value.value_);
         else
-          return static_cast<distance_type>(value_) >= static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) >= static_cast<index_type>(value.value_);
       }
       [[nodiscard]] constexpr auto operator>(const const_index_iterator& value) const noexcept {
         if constexpr (1 == VDirection)
-          return static_cast<distance_type>(value_) > static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) > static_cast<index_type>(value.value_);
         else
-          return static_cast<distance_type>(value_) <= static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) <= static_cast<index_type>(value.value_);
       }
 
       [[nodiscard]] constexpr auto operator<=(const const_index_iterator& value) const noexcept {
         if constexpr (1 == VDirection)
-          return static_cast<distance_type>(value_) <= static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) <= static_cast<index_type>(value.value_);
         else
-          return static_cast<distance_type>(value_) > static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) > static_cast<index_type>(value.value_);
       }
       [[nodiscard]] constexpr auto operator>=(const const_index_iterator& value) const noexcept {
         if constexpr (1 == VDirection)
-          return static_cast<distance_type>(value_) >= static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) >= static_cast<index_type>(value.value_);
         else
-          return static_cast<distance_type>(value_) < static_cast<distance_type>(value.value_);
+          return static_cast<index_type>(value_) < static_cast<index_type>(value.value_);
       }
 
     private:
-      size_type value_{ FirstIndex::value };
+      index_type value_{ FirstIndex::value };
     };
 
     constexpr EnumTraits() = default;

@@ -22,9 +22,13 @@
     <ClCompile Include="..\..\..\zs.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\dependency\gsl.h" />
+    <ClInclude Include="..\..\..\dependency\safeint.h" />
+    <ClInclude Include="..\..\..\detail\detail_log.h" />
     <ClInclude Include="..\..\..\enum.h" />
     <ClInclude Include="..\..\..\log.h" />
     <ClInclude Include="..\..\..\move_shared_ptr.h" />
+    <ClInclude Include="..\..\..\reflect.h" />
     <ClInclude Include="..\..\..\traits.h" />
     <ClInclude Include="..\..\..\zs.h" />
   </ItemGroup>
@@ -102,6 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)../../../../GSL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -118,6 +123,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)../../../../GSL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,6 +142,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)../../../../GSL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -156,6 +163,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)../../../../GSL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

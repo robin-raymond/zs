@@ -7,6 +7,7 @@
     <ClCompile Include="..\..\..\test\zs_test_enum.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_log.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_traits.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_reflect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\test\common.h" />

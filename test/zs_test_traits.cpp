@@ -5,6 +5,7 @@
 
 #include <optional>
 #include <iostream>
+#include <vector>
 
 namespace zsTest
 {
@@ -25,6 +26,31 @@ namespace zsTest
     {
       values_.reset();
       values_.emplace();
+    }
+
+    //-------------------------------------------------------------------------
+    void testUniquePtrByRef(std::unique_ptr<int> &&value) noexcept(false)
+    {
+      static_assert(zs::is_std_unique_ptr_v<std::remove_cvref_t<decltype(value)>>);
+    }
+
+    //-------------------------------------------------------------------------
+    void testMemberPointer() noexcept(false)
+    {
+      struct Fooish
+      {
+        int bar;
+        std::string something;
+      };
+
+      constexpr int Fooish::* ptr1{ &Fooish::bar };
+      constexpr std::string Fooish::* ptr2{ &Fooish::something };
+
+      zs::remove_deduced_member_pointer_t<decltype(ptr1)> myValue1{ 5 };
+      zs::remove_deduced_member_pointer_t<decltype(ptr2)> myValue2{ "hello" };
+
+      static_assert(std::is_same_v<std::remove_cvref_t<decltype(myValue1)>, int>);
+      static_assert(std::is_same_v<std::remove_cvref_t<decltype(myValue2)>, std::string>);
     }
 
     //-------------------------------------------------------------------------
@@ -50,6 +76,12 @@ namespace zsTest
       (void)larger2;
       static_assert(sizeof(larger2) == sizeof(uint32_t));
 
+      std::array<int, 5> arrayOfInts{};
+      static_assert(zs::is_std_array_v<decltype(arrayOfInts)>);
+
+      std::vector<float> floatVector;
+      static_assert(zs::is_std_vector_v<decltype(floatVector)>);
+
       output(__FILE__ "::" __FUNCTION__);
     }
 
@@ -59,6 +91,7 @@ namespace zsTest
       auto runner{ [&](auto&& func) noexcept(false) { reset(); func(); } };
 
       runner([&]() { test(); });
+      runner([&]() { std::unique_ptr<int> ignored; testUniquePtrByRef(std::move(ignored)); });
     }
   };
 

@@ -51,29 +51,20 @@ namespace zsTest
             static zs::log::MetaDataLogEntryInfo info{ &zs::log::component, "test1", __FILE__, __FUNCTION__, __LINE__};
             return info;
           }
+          constexpr static std::size_t totalParams() noexcept { return 2; }
+          constexpr static const auto paramNames() noexcept {
+            const std::array<std::string_view, 2> results { { "hello", "4" } };
+            return results;
+          }
 
         };
 
         std::string_view hello{ "hello" };
 
-        zs::log::output(_AnonEntry{}, hello, 2);
+        zs::log::output(_AnonEntry{}, hello, 4);
         //auto value = _AnonEntry<>{};
 
         //std::cout << "value: " << value << "\n";
-      }
-      {
-        struct _AnonEntry {
-          static zs::log::MetaDataLogEntry::id_type link(const zs::log::MetaDataLogEntry& g) noexcept {
-            return g.id();
-          }
-          static auto& info() {
-            static zs::log::MetaDataLogEntryInfo info{ &zs::log::component, "test2", __FILE__, __FUNCTION__, __LINE__ };
-            return info;
-          }
-        };
-        auto value = _AnonEntry::link(zs::log::logEntryMetaData<_AnonEntry>);
-
-        std::cout << "value: " << value << "\n";
       }
 
       output(__FILE__ "::" __FUNCTION__);

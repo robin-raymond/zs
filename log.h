@@ -1,18 +1,23 @@
 
 #pragma once
 
-#include "enum.h"
-#include "traits.h"
-
 #include <string_view>
 #include <cstring>
 #include <cwchar>
+#include <cassert>
+
+#include "enum.h"
+#include "traits.h"
+#include "dependency/safeint.h"
+#include "dependency/gsl.h"
 
 namespace zs
 {
   namespace log
   {
-    inline constexpr std::integral_constant<std::size_t, static_cast<std::size_t>(10 * 1024)> maxLogBufferSize;
+    inline constexpr std::integral_constant<zs::size_type, static_cast<zs::size_type>(64 * 1024)> maxLogBufferSize;
+    inline constexpr std::integral_constant<zs::size_type, static_cast<zs::size_type>(512)> maxLogArrayEntries;
+    inline constexpr std::integral_constant<zs::size_type, static_cast<zs::size_type>(1024)> maxLogStringLength;
 
     class Component;
 
@@ -82,7 +87,9 @@ namespace zs
       struct all_components;
       friend struct all_components;
 
-      using id_type = std::size_t;
+      using size_type = zs::size_type;
+      using index_type = zs::index_type;
+      using id_type = size_type;
       using constexpr_type = allow_constexpr;
 
       template <typename TComponent>
@@ -107,7 +114,7 @@ namespace zs
 
       //-----------------------------------------------------------------------
       constexpr Component(
-        const constexpr_type &,
+        const constexpr_type&,
         const std::string_view name,
         Level level = Level::Basic) noexcept :
         id_{},
@@ -141,14 +148,14 @@ namespace zs
         constexpr Iterator() = default;
 
         template <typename T = const_forward_iterator, typename std::enable_if_t<std::is_const_v<TComponent>, T> * = nullptr>
-        constexpr Iterator(const const_forward_iterator& value) noexcept : value_{ const_cast<Component *>(value.value_) } {}
+        constexpr Iterator(const const_forward_iterator& value) noexcept : value_{ const_cast<Component*>(value.value_) } {}
         constexpr Iterator(const forward_iterator& value) noexcept : value_{ value.value_ } {}
 
         template <typename T = const_forward_iterator, typename std::enable_if_t<std::is_const_v<TComponent>, T> * = nullptr>
         constexpr Iterator(const_forward_iterator&& value) noexcept : value_{ value.value_ } {}
         constexpr Iterator(forward_iterator&& value) noexcept : value_{ value.value_ } {}
 
-        constexpr Iterator(const Component* value) noexcept : value_{ const_cast<Component *>(value) } {}
+        constexpr Iterator(const Component* value) noexcept : value_{ const_cast<Component*>(value) } {}
         constexpr Iterator(TComponent&& value) noexcept : value_{ value } {}
 
         template <typename T = const_forward_iterator, typename std::enable_if_t<std::is_const_v<TComponent>, T> * = nullptr>
@@ -160,7 +167,7 @@ namespace zs
         constexpr auto& operator=(forward_iterator&& value) noexcept { value_ = value.value_; return *this; };
 
         template <typename T = const_forward_iterator, typename std::enable_if_t<std::is_const_v<TComponent>, T> * = nullptr>
-        [[nodiscard]] constexpr const auto &operator*() const noexcept { return *value_; }
+        [[nodiscard]] constexpr const auto& operator*() const noexcept { return *value_; }
         template <typename T = forward_iterator, typename std::enable_if_t<!std::is_const_v<TComponent>, T> * = nullptr>
         [[nodiscard]] constexpr auto& operator*() noexcept { return *value_; }
 
@@ -173,7 +180,7 @@ namespace zs
         [[nodiscard]] constexpr auto operator!=(const Iterator& value) const noexcept { return value_ != value.value_; }
 
       private:
-        std::remove_const_t<TComponent>* value_{nullptr};
+        std::remove_const_t<TComponent>* value_{ nullptr };
       };
 
       struct all_components {
@@ -215,22 +222,25 @@ namespace zs
     //-------------------------------------------------------------------------
     struct MetaDataTypeInfo
     {
-      using size_type = std::size_t;
-      using array_count_size_type = std::uint32_t;
+      using size_type = zs::size_type;
+      using index_type = zs::index_type;
 
       std::string_view typeName_{};
       std::string_view paramName_{};
       bool isIntegral_{};
       bool isSigned_{};
       bool isFloatingPoint_{};
-      size_type elementWidth_{};
-      size_type totalElements_{};
-      size_type totalSubEntries_{};
+      size_type elementWidth_{};      // 0 is legal (meaning the size is dependent on sub elements)
+      size_type totalElements_{};     // 0 is legal (meaning the array size is unknown in advance)
+      size_type totalSubEntries_{};   // 0 is legal (meaning no sub-entries exist)
 
-      constexpr bool isVariableArraySize() const noexcept { return 0 == totalElements_; }
+      constexpr bool isArray() const noexcept { return (0 == totalElements_) || (totalElements_ > 1); }
+      constexpr bool isArrayVariableSized() const noexcept { return 0 == totalElements_; }
+      constexpr bool hasSubEntries() const noexcept { return 0 != totalSubEntries_; }
+      constexpr bool subElementsContainSizing() const noexcept { return 0 == elementWidth_; }
 
       constexpr MetaDataTypeInfo() noexcept = default;
-      constexpr MetaDataTypeInfo(const MetaDataTypeInfo &) noexcept = default;
+      constexpr MetaDataTypeInfo(const MetaDataTypeInfo&) noexcept = default;
       constexpr MetaDataTypeInfo(MetaDataTypeInfo&&) noexcept = default;
 
       constexpr MetaDataTypeInfo& operator=(const MetaDataTypeInfo&) noexcept = default;
@@ -246,7 +256,7 @@ namespace zs
         result.isSigned_ = std::is_signed_v<T>;
         result.isFloatingPoint_ = std::is_floating_point_v<T>;
         result.elementWidth_ = sizeof(T);
-        result.totalElements_= 1;
+        result.totalElements_ = 1;
         return result;
       }
 
@@ -260,8 +270,80 @@ namespace zs
     //-------------------------------------------------------------------------
     struct MetaDataTypeCommon
     {
-      using size_type = MetaDataTypeInfo::size_type;
-      using array_count_size_type = MetaDataTypeInfo::array_count_size_type;
+      using size_type = zs::size_type;
+      using index_type = zs::index_type;
+      using array_count_size_type = std::uint32_t;
+
+      //-----------------------------------------------------------------------
+      template <typename TMetaDataType>
+      constexpr static size_type calculateFixedSize() noexcept
+      {
+        if constexpr (TMetaDataType::isFixedSize()) {
+          constexpr size_type result{ TMetaDataType::size() };
+          return result;
+        }
+        else {
+          return 0;
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      template <typename TMetaDataType, typename TValue>
+      constexpr static size_type calculateDynamicSize(TMetaDataType&& metaDataTypeInstance, TValue &&value) noexcept
+      {
+        if constexpr (!TMetaDataType::isFixedSize()) {
+          return metaDataTypeInstance.size(std::forward<decltype(value)>(value));
+        }
+        else {
+          return 0;
+        }
+      }
+
+      //-----------------------------------------------------------------------
+      template <typename TMetaDataType, typename TSubType>
+      static void fillInfo(MetaDataTypeInfo*& first, MetaDataTypeInfo* last, std::string_view paramName) noexcept
+      {
+        (*first) = TMetaDataType::info();
+        (*first).fixTypeName<TSubType>();
+        (*first).paramName_ = paramName;
+        ++first;
+
+        if constexpr (TMetaDataType::info().totalSubEntries_ > 0) {
+          TMetaDataType::fill(first, last);
+          first += TMetaDataType::info().totalSubEntries_;
+        }
+        assert(first <= last);
+      }
+
+      constexpr static size_type sizeCount() noexcept { return sizeof(array_count_size_type); }
+
+      //-----------------------------------------------------------------------
+      void packCount(std::byte*& buffer, size_type total, size_type& remaining) const noexcept
+      {
+        array_count_size_type count = gsl::narrow_cast<decltype(count)>(total);
+
+        if (remaining < sizeof(count)) {
+          remaining = 0;
+          return;
+        }
+
+        memcpy(buffer, &count, sizeof(count));
+        buffer += sizeof(count);
+        remaining -= sizeof(count);
+      }
+
+      //-----------------------------------------------------------------------
+      void packData(std::byte*& buffer, const void* source, size_type size, size_type& remaining) const noexcept
+      {
+        if (remaining < size) {
+          remaining = 0;
+          return;
+        }
+
+        memcpy(buffer, source, size);
+        buffer += size;
+        remaining -= size;
+      }
     };
 
     template <typename T, typename Enabled = void>
@@ -279,187 +361,15 @@ namespace zs
     {
       using type = void;
     };
+  }
+}
 
-    //-------------------------------------------------------------------------
-    template <typename T>
-    struct MetaDataType<T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>>> final : public MetaDataTypeCommon
-    {
-      using type = std::remove_cvref_t<T>;
+#include "detail/detail_log.h"
 
-      constexpr static auto isFixedSize() noexcept { return true; }
-      constexpr static auto size() noexcept { return sizeof(type); }
-      constexpr static MetaDataTypeInfo info() noexcept { return MetaDataTypeInfo::simple<type>(); }
-
-      //-----------------------------------------------------------------------
-      constexpr void pack(const type value, std::byte*& buffer) const noexcept
-      {
-        memcpy(buffer, &value, size());
-        buffer += size();
-      }
-    };
-
-    //-------------------------------------------------------------------------
-    template <typename T>
-    struct MetaDataType<T, std::enable_if_t<is_basic_string_view_v<T>>> final : public MetaDataTypeVariable
-    {
-      using type = std::remove_cvref_t<T>;
-      using element_type = std::remove_cvref_t<typename type::value_type>;
-
-      //-----------------------------------------------------------------------
-      constexpr static MetaDataTypeInfo info() noexcept
-      {
-        auto result{ MetaDataTypeInfo::simple<element_type>() };
-        result.totalElements_ = {};
-        return result;
-      }
-
-      //-----------------------------------------------------------------------
-      constexpr auto size(const type value) const noexcept
-      {
-        return sizeof(array_count_size_type) + (sizeof(type::value_type) * value.size());
-      }
-      //-----------------------------------------------------------------------
-      constexpr void pack(const type value, std::byte*& buffer) const noexcept
-      {
-        array_count_size_type count = static_cast<array_count_size_type>(value.size());
-        size_type length = (sizeof(type::value_type) * value.size());
-        memcpy(buffer, &count, sizeof(count));
-        buffer += sizeof(count);
-        memcpy(buffer, value.data(), length);
-        buffer += length;
-      }
-    };
-
-    //-------------------------------------------------------------------------
-    template <typename T>
-    struct MetaDataType<T, std::enable_if_t<is_basic_string_v<T>>> final : public MetaDataTypeVariable
-    {
-      using type = std::remove_cvref_t<T>;
-      using element_type = std::remove_cvref_t<typename type::value_type>;
-
-      constexpr static MetaDataTypeInfo info() noexcept
-      {
-        auto result{ MetaDataTypeInfo::simple<element_type>() };
-        result.totalElements_ = 0;
-        return result;
-      }
-      constexpr auto size(const type &value) const noexcept
-      {
-        return sizeof(array_count_size_type) + (sizeof(type::value_type) * value.size());
-      }
-      constexpr void pack(const type &value, std::byte*& buffer) const noexcept
-      {
-        array_count_size_type count = static_cast<array_count_size_type>(value.size());
-        size_t length = (sizeof(type::value_type) * value.size());
-        memcpy(buffer, &count, sizeof(count));
-        buffer += sizeof(count);
-        memcpy(buffer, value.c_str(), length);
-        buffer += length;
-      }
-    };
-
-    //-------------------------------------------------------------------------
-    template <typename T, size_t N>
-    struct MetaDataType<const T [N], std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>>>  final : public MetaDataTypeVariable
-    {
-      using type = const T[N];
-      using element_type = T;
-
-      constexpr static auto isFixedSize() noexcept { return true; }
-
-      //-----------------------------------------------------------------------
-      constexpr static MetaDataTypeInfo info() noexcept
-      {
-        auto result{ MetaDataTypeInfo::simple<element_type>() };
-        result.totalElements_ = static_cast<decltype(result.totalElements_)>(N);
-        return result;
-      }
-      //-----------------------------------------------------------------------
-      constexpr static auto size() noexcept
-      {
-        return (sizeof(element_type) * static_cast<size_type>(N));
-      }
-      //-----------------------------------------------------------------------
-      void pack(type &value, std::byte*& buffer) const noexcept
-      {
-        if constexpr(0 != (sizeof(element_type) % alignof(element_type))) {
-          for (size_type i{}; i < N; ++i) {
-            memcpy(buffer, &(value[i]), sizeof(element_type));
-            buffer += sizeof(element_type);
-          }
-        }
-        else {
-          constexpr size_type length = size();
-          memcpy(buffer, &(value[0]), length);
-          buffer += length;
-        }
-      }
-    };
-
-    //-------------------------------------------------------------------------
-    template <>
-    struct MetaDataType<const char * const, void>  final : public MetaDataTypeVariable
-    {
-      using type = const char * const;
-      using element_type = char;
-
-      array_count_size_type count_{};
-
-      //-----------------------------------------------------------------------
-      constexpr static MetaDataTypeInfo info() noexcept
-      {
-        auto result{ MetaDataTypeInfo::simple<element_type>() };
-        result.totalElements_ = {};
-        return result;
-      }
-
-      //-----------------------------------------------------------------------
-      constexpr auto size(type value) noexcept
-      {
-        if (!value)
-          return sizeof(array_count_size_type);
-        count_ = static_cast<array_count_size_type>(strlen(value));
-        return sizeof(array_count_size_type) + (static_cast<size_type>(count_)*sizeof(element_type));
-      }
-      //-----------------------------------------------------------------------
-      void pack(type value, std::byte*& buffer) const noexcept
-      {
-        size_type length = (static_cast<size_type>(count_) * sizeof(element_type));
-        memcpy(buffer, &count_, sizeof(count_));
-        buffer += sizeof(count_);
-        memcpy(buffer, value, length);
-        buffer += length;
-      }
-    };
-
-    //-------------------------------------------------------------------------
-    template <>
-    struct MetaDataType<const wchar_t* const, void>  final : public MetaDataTypeVariable
-    {
-      using type = const wchar_t* const;
-      using element_type = char;
-
-      array_count_size_type count_{};
-
-      //-----------------------------------------------------------------------
-      constexpr auto size(type value) noexcept
-      {
-        if (!value)
-          return sizeof(array_count_size_type);
-        count_ = static_cast<array_count_size_type>(wcslen(value));
-        return sizeof(array_count_size_type) + (static_cast<size_type>(count_) * sizeof(element_type));
-      }
-      //-----------------------------------------------------------------------
-      void pack(type value, std::byte*& buffer) const noexcept
-      {
-        size_type length = (static_cast<size_type>(count_) * sizeof(element_type));
-        memcpy(buffer, &count_, sizeof(count_));
-        buffer += sizeof(count_);
-        memcpy(buffer, value, length);
-        buffer += length;
-      }
-    };
-
+namespace zs
+{
+  namespace log
+  {
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
@@ -481,8 +391,9 @@ namespace zs
       struct all_types;
       friend struct all_types;
 
-      using size_type = std::size_t;
-      using id_type = std::size_t;
+      using size_type = zs::size_type;
+      using index_type = zs::index_type;
+      using id_type = size_type;
       using constexpr_type = allow_constexpr;
 
       //-----------------------------------------------------------------------
@@ -574,11 +485,17 @@ namespace zs
     class MetaDataLogEntryWithArgs : public MetaDataLogEntry
     {
     public:
+      using param_array_type = std::array<std::string_view, TAnon::totalParams()>;
+
       //-----------------------------------------------------------------------
-      MetaDataLogEntryWithArgs(MetaDataLogEntryInfo& info) noexcept :
+      MetaDataLogEntryWithArgs(
+        MetaDataLogEntryInfo& info,
+        const param_array_type& params
+        ) noexcept :
         MetaDataLogEntry(info)
       {
-        fillEntries<Args...>(static_cast<size_type>(0));
+        static_assert(TAnon::totalParams() == sizeof...(Args));
+        fillEntries<Args...>(static_cast<size_type>(0), begin(params));
         first_ = entries_.data();
         last_ = first_ + totalEntries_;
       }
@@ -611,34 +528,39 @@ namespace zs
 
       //-----------------------------------------------------------------------
       template <typename T = void, typename ...Args>
-      constexpr void fillEntries(size_type index) noexcept
+      constexpr void fillEntries(size_type index, typename param_array_type::const_iterator iter) noexcept
       {
         using type = std::remove_cvref_t<T>;
         using meta_type = MetaDataType<type>;
 
-        if constexpr (std::is_same_v<void, T>) {
-          return;
-        }
-        else {
+        if constexpr (!std::is_same_v<void, T>) {
+          constexpr size_type totalSubEntries{ meta_type::info().totalSubEntries_ };
+
           entries_[index] = meta_type::info();
           entries_[index].fixTypeName<type>();
+          entries_[index].paramName_ = (*iter);
+
+          if constexpr (totalSubEntries > 0) {
+            meta_type::fill(&(entries_[index + static_cast<size_type>(1)]), &(entries_[index + static_cast<size_type>(1) + totalSubEntries]));
+          }
 
           if constexpr (sizeof...(Args) > 0) {
-            fillEntries<Args...>(index + 1);
+            ++iter;
+            fillEntries<Args...>(index + totalSubEntries + static_cast<size_type>(1), iter);
           }
         }
       }
 
     protected:
       //-----------------------------------------------------------------------
-      constexpr static size_type totalEntries_{ calculateTotalEntries<int, int>() };
+      constexpr static size_type totalEntries_{ calculateTotalEntries<Args...>() };
 
       std::array<MetaDataTypeInfo, totalEntries_> entries_;
     };
 
     //-------------------------------------------------------------------------
     template <typename TAnon, typename ...Args>
-    inline MetaDataLogEntryWithArgs<TAnon, Args...> logEntryMetaData{ TAnon::info() };
+    inline MetaDataLogEntryWithArgs<TAnon, Args...> logEntryMetaData{ TAnon::info(), TAnon::paramNames() };
 
     //-------------------------------------------------------------------------
     //-------------------------------------------------------------------------
@@ -648,7 +570,8 @@ namespace zs
     class LogEntry
     {
     public:
-      using size_type = std::size_t;
+      using size_type = zs::size_type;
+      using index_type = zs::index_type;
 
     public:
       //-----------------------------------------------------------------------
@@ -660,7 +583,7 @@ namespace zs
           if constexpr (size > 0) {
             std::array<std::byte, size> buffer;
             std::byte* pos = &(buffer[0]);
-            PackerFixedSize pack{ pos };
+            PackerFixedSize pack{ pos, size };
 
             (pack << ... << args);
           }
@@ -682,23 +605,11 @@ namespace zs
           PackerFlexSizeCalculator sizer{ start, bufferMetaDataSizeWithPadding };
           (sizer << ... << args);
 
-          PackerFlexSizePack pack{ start, bufferMetaDataSizeWithPadding, nullptr, sizer.totalEntriesSafelyPacked_ };
+          std::array<std::byte, maxSize> buffer;
 
-          auto done{ [&]() {
-          } };
+          PackerFlexSizePack pack{ start, bufferMetaDataSizeWithPadding, buffer.data(), maxSize };
 
-          if (sizer.totalSize_ < 1024) {
-            std::array<std::byte, 1024> buffer;
-            pack.pos_ = buffer.data();
-            (pack << ... << args);
-            done();
-          }
-          else {
-            std::array<std::byte, maxSize> buffer;
-            pack.pos_ = buffer.data();
-            (pack << ... << args);
-            done();
-          }
+          (pack << ... << args);
 
           dtorMetaData<Args...>(start, bufferMetaDataSizeWithPadding);
         }
@@ -778,6 +689,7 @@ namespace zs
       struct PackerFixedSize final
       {
         std::byte* pos_;
+        size_type remaining_;
 
         template <typename T>
         auto& operator<<(T&& value) noexcept
@@ -785,7 +697,7 @@ namespace zs
           using type = std::remove_cvref_t<T>;
           using meta_type = MetaDataType<type>;
 
-          meta_type{}.pack(std::forward<decltype(value)>(value), pos_);
+          meta_type{}.pack(pos_, std::forward<decltype(value)>(value), remaining_);
           return *this;
         }
       };
@@ -793,13 +705,13 @@ namespace zs
       //-----------------------------------------------------------------------
       struct PackerFlexSizeCalculator final
       {
-        using size_type = std::size_t;
+        using size_type = zs::size_type;
+        using index_type = zs::index_type;
 
         std::byte* metaDataPos_{ nullptr };
         const size_type metaDataSizeWithPadding_{};
 
-        size_type totalSize_{};
-        size_type totalEntriesSafelyPacked_{};
+        size_type size_{};
 
         constexpr static size_type maxSize_{ maxLogBufferSize() };
 
@@ -810,15 +722,12 @@ namespace zs
           using meta_type = MetaDataType<type>;
 
           if constexpr (meta_type::isFixedSize()) {
-            totalSize_ += meta_type::size();
+            size_ += meta_type::size();
           }
           else {
-            totalSize_ += ((*reinterpret_cast<meta_type*>(metaDataPos_)).size(std::forward<decltype(value)>(value)));
+            size_ += ((*reinterpret_cast<meta_type*>(metaDataPos_)).size(std::forward<decltype(value)>(value)));
           }
           metaDataPos_ += metaDataSizeWithPadding_;
-
-          if (totalSize_ <= maxSize_)
-            ++totalEntriesSafelyPacked_;
 
           return *this;
         }
@@ -827,13 +736,14 @@ namespace zs
       //-----------------------------------------------------------------------
       struct PackerFlexSizePack final
       {
-        using size_type = std::size_t;
+        using size_type = zs::size_type;
+        using index_type = zs::index_type;
 
         std::byte* metaDataPos_{ nullptr };
         const size_type metaDataSizeWithPadding_{};
 
         std::byte* pos_;
-        size_type totalEntriesSafelyPacked_{};
+        size_type remaining_{};
         
         template <typename T>
         auto& operator<<(T&& value) noexcept
@@ -841,9 +751,8 @@ namespace zs
           using type = std::remove_cvref_t<T>;
           using meta_type = MetaDataType<type>;
 
-          if (totalEntriesSafelyPacked_) {
-            ((*reinterpret_cast<meta_type*>(metaDataPos_)).pack(std::forward<decltype(value)>(value), pos_));
-            --totalEntriesSafelyPacked_;
+          if (remaining_ > 0) {
+            (*reinterpret_cast<meta_type*>(metaDataPos_)).pack(pos_, std::forward<decltype(value)>(value), remaining_);
           }
           metaDataPos_ += metaDataSizeWithPadding_;
           return *this;
@@ -887,7 +796,8 @@ namespace zs
     template <typename TAnon, typename ...Args>
     void output(TAnon&& anon, Args&& ...args) noexcept
     {
-      LogEntry<Args...>{}(logEntryMetaData<TAnon, Args...>, std::forward<Args>(args)...);
+      auto& metaData = logEntryMetaData<TAnon, Args...>;
+      LogEntry<Args...>{}(metaData, std::forward<Args>(args)...);
     }
 
     //-------------------------------------------------------------------------
