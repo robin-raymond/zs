@@ -151,7 +151,7 @@ namespace zsTest
         // test reverse const iterator
         {
           int index = static_cast<decltype(index)>(values.size()) - 1;
-          for (SomethingTraits::reverse_const_iterator iter = cDefault.rbegin(); iter != cDefault.rend(); ++iter, --index) {
+          for (SomethingTraits::const_reverse_iterator iter = cDefault.rbegin(); iter != cDefault.rend(); ++iter, --index) {
             auto [value, name] = *iter;
 
             TEST(iter == iter);
@@ -228,7 +228,7 @@ namespace zsTest
         // test reverse const iterator
         {
           int index = static_cast<decltype(index)>(values.size()) - 1;
-          for (SomethingTraitsByValue::reverse_const_iterator iter = cValue.rbegin(); iter != cValue.rend(); ++iter, --index) {
+          for (SomethingTraitsByValue::const_reverse_iterator iter = cValue.rbegin(); iter != cValue.rend(); ++iter, --index) {
             auto [value, name] = *iter;
 
             TEST(iter == iter);
@@ -305,7 +305,7 @@ namespace zsTest
         // test reverse const iterator
         {
           int index = static_cast<decltype(index)>(values.size()) - 1;
-          for (SomethingTraitsByName::reverse_const_iterator iter = cName.rbegin(); iter != cName.rend(); ++iter, --index) {
+          for (SomethingTraitsByName::const_reverse_iterator iter = cName.rbegin(); iter != cName.rend(); ++iter, --index) {
             auto [value, name] = *iter;
 
             TEST(iter == iter);

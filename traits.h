@@ -161,7 +161,6 @@ namespace zs
       _ImpossibleType() = delete;
       _ImpossibleType(const _ImpossibleType&) = delete;
       _ImpossibleType(_ImpossibleType&&) = delete;
-      _ImpossibleType(const _ImpossibleType&&) = delete;
       ~_ImpossibleType() = delete;
     };
 
@@ -191,6 +190,36 @@ namespace zs
 
   template <typename T, typename ...Args>
   inline constexpr bool is_type_in_type_list_v = is_type_in_type_list<T, Args...>::value;
+
+  //---------------------------------------------------------------------------
+  namespace detail
+  {
+    template <typename T, typename TCurrent, typename... Args>
+    struct are_all_checker {};
+
+    template<template<typename...> class TT, typename TCurrent, typename... Args1, typename... Args2>
+    struct are_all_checker<TT<Args1...>, TCurrent, Args2...>
+    {
+      constexpr static bool is() noexcept
+      {
+        if constexpr (!(TT<TCurrent>::value))
+          return false;
+        else if constexpr (sizeof...(Args2) > 0)
+          return are_all_checker<TT<Args1...>, Args2...>::is();
+        else
+          return true;
+      }
+    };
+  }
+
+  template<typename T, typename... Args>  // generic template
+  struct are_all;
+
+  template<template<typename...> class TT, typename... Args1, typename... Args2>
+  struct are_all<TT<Args1...>, Args2...> : public std::conditional_t<detail::are_all_checker<TT<Args1...>, Args2...>::is(), std::true_type, std::false_type> {};
+
+  template <typename TT, typename... Args>
+  inline constexpr bool are_all_v = are_all<TT, Args...>::value;
 
   //---------------------------------------------------------------------------
   template<typename T1, typename T2>  // generic template

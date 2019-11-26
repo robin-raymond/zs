@@ -8,28 +8,9 @@
 
 namespace zs
 {
-  template <typename TReflect>
-  struct ReflectVisitor
-  {
-    using index_type = zs::index_type;
-    using reflect_type = std::remove_cvref_t<TReflect>;
-
-    [[nodiscard]] index_type index() noexcept { return index_; }
-
-    template <typename TVisitorFunction>
-    decltype(auto) visit(TVisitorFunction &&vis) const noexcept(std::is_nothrow_invocable_v<decltype(vis)>)
-    {
-      return reflect_.visit(index_, std::forward<decltype(vis)>(vis));
-    }
-
-    TReflect reflect_;
-    index_type index_;
-  };
-
   template <typename ...Args>
   struct ReflectType
   {
-
     using size_type = zs::size_type;
     using tuple_type = std::tuple<Args...>;
     using type_list = TypeList<Args...>;
@@ -107,6 +88,7 @@ namespace zs
     using type = Reflect<TStruct, Args...>;
 
     using index_type = zs::index_type;
+    using type = Reflect;
 
     template <typename TIndexType, index_type VDirection = static_cast<index_type>(1)>
     class Iterator;
@@ -115,13 +97,13 @@ namespace zs
     using const_iterator = Iterator<const index_type, static_cast<index_type>(1)>;
 
     using reverse_iterator = Iterator<index_type, static_cast<index_type>(-1)>;
-    using reverse_const_iterator = Iterator<const index_type, static_cast<index_type>(-1)>;
+    using const_reverse_iterator = Iterator<const index_type, static_cast<index_type>(-1)>;
 
     friend iterator;
     friend const_iterator;
 
     friend reverse_iterator;
-    friend reverse_const_iterator;
+    friend const_reverse_iterator;
 
     constexpr Reflect() noexcept = delete;
     constexpr Reflect(const Reflect&) noexcept = default;
@@ -181,13 +163,19 @@ namespace zs
     }
 
     //-------------------------------------------------------------------------
-    template <typename TIndex, typename TFunction>
-    constexpr decltype(auto) visit(TIndex index, TFunction&& function) const noexcept(std::is_nothrow_invocable_v<decltype(function)>)
+    template <typename TFunction, typename... TIndex>
+    constexpr decltype(auto) visit(TFunction&& function, TIndex... index) const noexcept(std::is_nothrow_invocable_v<decltype(function)>)
     {
       return std::visit(
-        [&](auto&& memberPtr) noexcept(std::is_nothrow_invocable_v<decltype(function)>) -> decltype(auto) { return function(structure_.*memberPtr); },
-        std::forward<decltype(ReflectType<Args...>::membersAsArray_[index])>(ReflectType<Args...>::membersAsArray_[index])
+        [&]<typename... Args>(auto&& ...memberPtr) noexcept(std::is_nothrow_invocable_v<decltype(function)>) -> decltype(auto) { return function((structure_.*memberPtr)...); },
+        (std::forward<decltype(ReflectType<Args...>::membersAsArray_[index])>(ReflectType<Args...>::membersAsArray_[index]))...
       );
+    }
+
+    //-------------------------------------------------------------------------
+    constexpr auto operator[](index_type index) const noexcept
+    {
+      return ReflectVisitor<std::add_lvalue_reference_t<Reflect>>{ *this, index };
     }
 
     //-------------------------------------------------------------------------
@@ -224,11 +212,11 @@ namespace zs
       constexpr auto& operator=(const_index_iterator&& value) noexcept { value_ = value.value_; return *this; };
       constexpr auto& operator=(index_iterator&& value) noexcept { value_ = value.value_; return *this; };
 
-      [[nodiscard]] index_type index() const noexcept { return value_; }
+      [[nodiscard]] constexpr index_type index() const noexcept { return value_; }
 
-      [[nodiscard]] constexpr auto operator*() const noexcept
+      [[nodiscard]] constexpr decltype(auto) operator*() const noexcept
       {
-        return ReflectVisitor<decltype(outer_)>{ outer_, value_ };
+        return outer_[value_];
       }
       [[nodiscard]] constexpr decltype(auto) operator->() const noexcept { return &(*(*this)); }
 
@@ -326,13 +314,42 @@ namespace zs
     [[nodiscard]] constexpr auto end() const noexcept { return const_iterator{ { *this, Reflect::total() } }; }
 
     [[nodiscard]] constexpr auto rbegin() noexcept { return reverse_iterator{ { *this, Reflect::total() - 1 } }; }
-    [[nodiscard]] constexpr auto rbegin() const noexcept { return reverse_const_iterator{ { *this, Reflect::total() - 1 }  }; }
+    [[nodiscard]] constexpr auto rbegin() const noexcept { return const_reverse_iterator{ { *this, Reflect::total() - 1 }  }; }
 
     [[nodiscard]] constexpr auto rend() noexcept { return reverse_iterator{ { *this, -1 } }; }
-    [[nodiscard]] constexpr auto rend() const noexcept { return reverse_const_iterator{ { *this, -1 } }; }
+    [[nodiscard]] constexpr auto rend() const noexcept { return const_reverse_iterator{ { *this, -1 } }; }
 
   protected:
     TStruct structure_;
+  };
+
+  template <typename TReflect>
+  struct ReflectVisitor
+  {
+    using index_type = zs::index_type;
+    using reflect_type = std::remove_cvref_t<TReflect>;
+
+    friend reflect_type;
+
+    ReflectVisitor(const reflect_type& reflect, index_type index) noexcept : reflect_(reflect), index_(index) {}
+
+    ReflectVisitor() = default;
+    ReflectVisitor(const ReflectVisitor&) = default;
+    ReflectVisitor(ReflectVisitor&&) = default;
+
+    [[nodiscard]] constexpr index_type index() noexcept { return index_; }
+
+    template <typename TVisitorFunction>
+    constexpr decltype(auto) visit(TVisitorFunction&& vis) const noexcept(std::is_nothrow_invocable_v<decltype(vis)>)
+    {
+      return reflect_.visit(std::forward<decltype(vis)>(vis), index_);
+    }
+
+    const reflect_type& reflect() const noexcept { return reflect_; }
+
+  protected:
+    const reflect_type& reflect_;
+    index_type index_;
   };
 
   template <typename ...Args>
@@ -360,20 +377,6 @@ namespace zs
     Reflect<TStruct, Args...> result = { std::forward<TStruct>(structure), std::forward<decltype(reflectType)>(reflectType) };
     return result;
   }
-
-  //---------------------------------------------------------------------------
-  template <typename ...Args>
-  struct is_reflect_iterator : std::false_type {};
-
-  template <typename T>
-  inline constexpr bool is_reflect_iterator_v = is_reflect_iterator<T>::value;
-
-  template <typename T>
-  struct is_deduced_reflect_iterator : is_reflect_iterator<std::remove_cvref_t<T>> {};
-
-  template <typename T>
-  inline constexpr bool is_deduced_reflect_iterator_v = is_deduced_reflect_iterator<T>::value;
-
 
 } // namespace zs
 
@@ -411,16 +414,17 @@ namespace std
   };
 
   //---------------------------------------------------------------------------
-  template <class TVisitor, typename T>
-  constexpr decltype(auto) visit(TVisitor&& vis, const zs::ReflectVisitor<T>& reflectVisitor) noexcept(std::is_nothrow_invocable_v<decltype(vis)>)
+  template <class TVisitor, typename T, std::enable_if_t<zs::is_deduced_reflect_visitor_v<T>> * = nullptr >
+  constexpr decltype(auto) visit(TVisitor&& vis, T&& reflectVisitor) noexcept(std::is_nothrow_invocable_v<decltype(vis)>)
   {
     return reflectVisitor.visit(std::forward<decltype(vis)>(vis));
   }
 
-  template <class TVisitor, typename T>
-  constexpr decltype(auto) visit(TVisitor&& vis, zs::ReflectVisitor<T>&& reflectVisitor) noexcept(std::is_nothrow_invocable_v<decltype(vis)>)
+  //---------------------------------------------------------------------------
+  template <class TVisitor, typename TReflect, typename... Args, std::enable_if_t<zs::is_deduced_reflect_v<TReflect>> * = nullptr >
+  constexpr decltype(auto) visit(TVisitor&& vis, TReflect&& reflect, Args... args) noexcept(std::is_nothrow_invocable_v<decltype(vis)>)
   {
-    return reflectVisitor.visit(std::forward<decltype(vis)>(vis));
+    return reflect.visit(std::forward<decltype(vis)>(vis), std::forward<Args>(args)...);
   }
 
 } // namespace std

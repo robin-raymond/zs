@@ -161,7 +161,7 @@ namespace zs
     using const_iterator = Iterator<const index_type, static_cast<index_type>(1)>;
 
     using reverse_iterator = Iterator<index_type, static_cast<index_type>(-1)>;
-    using reverse_const_iterator = Iterator<const index_type, static_cast<index_type>(-1)>;
+    using const_reverse_iterator = Iterator<const index_type, static_cast<index_type>(-1)>;
 
     template <typename TIteratorEnumType, index_type VDirection>
     class Iterator
@@ -309,10 +309,10 @@ namespace zs
     [[nodiscard]] constexpr auto end() const noexcept { const_iterator temp{ lastIndex() }; ++temp; return temp; }
 
     [[nodiscard]] constexpr auto rbegin() noexcept { return reverse_iterator{ lastIndex() }; }
-    [[nodiscard]] constexpr auto rbegin() const noexcept { return reverse_const_iterator{ lastIndex() }; }
+    [[nodiscard]] constexpr auto rbegin() const noexcept { return const_reverse_iterator{ lastIndex() }; }
 
     [[nodiscard]] constexpr auto rend() noexcept { reverse_iterator temp{ firstIndex() }; ++temp; return temp; }
-    [[nodiscard]] constexpr auto rend() const noexcept { reverse_const_iterator temp{ firstIndex() }; ++temp; return temp; }
+    [[nodiscard]] constexpr auto rend() const noexcept { const_reverse_iterator temp{ firstIndex() }; ++temp; return temp; }
 
     [[nodiscard]] constexpr static auto total() noexcept { return Total::value; }
     [[nodiscard]] constexpr auto size() const noexcept { return Total::value; }
@@ -378,12 +378,12 @@ namespace std
   template <typename TEnumType, typename TEnumDeclare>
   [[nodiscard]] constexpr auto crbegin(zs::EnumTraits<TEnumType, TEnumDeclare> e)
   {
-    return typename zs::EnumTraits<TEnumType, TEnumDeclare>::reverse_const_iterator(e.rbegin());
+    return typename zs::EnumTraits<TEnumType, TEnumDeclare>::const_reverse_iterator(e.rbegin());
   }
   template <typename TEnumType, typename TEnumDeclare>
   [[nodiscard]] constexpr auto crend(zs::EnumTraits<TEnumType, TEnumDeclare> e)
   {
-    return typename zs::EnumTraits<TEnumType, TEnumDeclare>::reverse_const_iterator(e.rend());
+    return typename zs::EnumTraits<TEnumType, TEnumDeclare>::const_reverse_iterator(e.rend());
   }
 
 } // namespace zs

@@ -61,6 +61,11 @@ namespace zsTest
         std::cout << "VALUE: " << value << "\n";
       } };
 
+      auto function2{ [](auto&& value1, auto &&value2) noexcept {
+        std::cout << "VALUE: " << value1 << " " << value2 << "\n";
+      } };
+
+
       constexpr Bar bar{ 1, "2", 3.3, 4.4f };
 
       constexpr auto reflect = zs::make_reflect_from_type(bar, reflectType);
@@ -71,11 +76,13 @@ namespace zsTest
       auto&& value1 = std::get<1>(reflect);
       function(std::forward<decltype(value1)>(value1));
 
+      reflect.visit(function2, 0, 1);
+
       // run time index visitation
-      reflect.visit(0, function);
-      reflect.visit(1, function);
-      reflect.visit(2, function);
-      reflect.visit(3, function);
+      reflect.visit(function, 0);
+      reflect.visit(function, 1);
+      reflect.visit(function, 2);
+      reflect.visit(function, 3);
 
       // compile time visitation
       reflect.visit<0, decltype(function)>(std::forward<decltype(function)>(function));
@@ -90,10 +97,17 @@ namespace zsTest
          [](const std::string_view arg) { std::cout << std::quoted(arg) << ' '; }
       } };
 
+      std::visit([](auto&& value1, auto&& value2, auto&& value3, auto&& value4) noexcept { std::cout << "V1: " << value1 << " V2: " << value2 << " V3: " << value3 << " V4: " << value4 << "\n"; }, reflect, 0, 1, 2, 3);
+
       // overloaded visitation
       for (const auto &elem : reflect)
       {
         std::visit(myCallbacks, elem);
+
+        constexpr bool value1 = zs::is_deduced_reflect_type_v<void>;
+        constexpr bool value2 = zs::is_deduced_reflect_visitor_v<decltype(elem)>;
+
+        static_assert(zs::are_all_v<zs::is_deduced_reflect_visitor<int>, decltype(elem), decltype(elem)>);
       }
       
       output(__FILE__ "::" __FUNCTION__);
