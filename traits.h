@@ -100,10 +100,22 @@ namespace zs
   template <typename T>
   class move_only_shared_ptr;
 
+  template <typename ...Args>
+  struct ReflectType;
+
+  template <typename TStruct, typename ...Args>
+  struct Reflect;
+
+  template <typename TReflect>
+  struct ReflectVisitor;
+
   //---------------------------------------------------------------------------
   template <typename T>
   struct remove_member_pointer
   {
+    using type = T;
+    using member_type = T;
+    using struct_type = T;
   };
 
   template <typename T, typename U>
@@ -140,39 +152,210 @@ namespace zs
   template <class T>
   inline constexpr bool is_deduced_member_function_pointer_v = is_deducted_member_function_pointer<T>::value;
 
+  //---------------------------------------------------------------------------
+  namespace detail
+  {
+    struct _ImpossibleType
+    {
+    private:
+      _ImpossibleType() = delete;
+      _ImpossibleType(const _ImpossibleType&) = delete;
+      _ImpossibleType(_ImpossibleType&&) = delete;
+      _ImpossibleType(const _ImpossibleType&&) = delete;
+      ~_ImpossibleType() = delete;
+    };
+
+    //---------------------------------------------------------------------------
+    template <typename T, typename TCompareType = detail::_ImpossibleType, typename ...Args>
+    constexpr decltype(auto) is_type_in_type_list() noexcept
+    {
+      if constexpr (std::is_same_v<T, TCompareType>)
+        return true;
+      else if constexpr (sizeof...(Args) > 0)
+        return is_type_in_type_list<TCompareType, Args...>();
+      else
+        return false;
+    }
+
+    //---------------------------------------------------------------------------
+    template <typename T, typename ...Args>
+    struct type_in_type_list
+    {
+      using type = std::conditional_t<is_type_in_type_list<T, Args...>(), std::true_type, std::false_type>;
+    };
+
+  } // namespace detail
+
+  template <typename T, typename ...Args>
+  struct is_type_in_type_list : public detail::type_in_type_list<T, Args...>::type {};
+
+  template <typename T, typename ...Args>
+  inline constexpr bool is_type_in_type_list_v = is_type_in_type_list<T, Args...>::value;
+
+  //---------------------------------------------------------------------------
+  template<typename T1, typename T2>  // generic template
+  struct rebind_from_template;
+
+  template<template<typename...> class TT1, template<typename...> class TT2, typename... Args1, typename... Args2>
+  struct rebind_from_template<TT1<Args1...>, TT2<Args2...>>
+  {
+    using type = TT1<Args2...>;
+  };
+
+  template<typename T1, typename T2>
+  using rebind_from_template_t = typename rebind_from_template< T1, T2 >::type;
+
+  //---------------------------------------------------------------------------
+  template <typename... Args>
+  using count_types = std::integral_constant<size_type, sizeof...(Args)>;
+
+  template <typename... Args>
+  using is_type_list_empty = std::integral_constant<bool, count_types<Args...> == 0>;
+
+  template <typename... Args>
+  inline constexpr bool is_type_list_empty_v = is_type_list_empty<Args...>::value;
+
+  //---------------------------------------------------------------------------
+  template <typename... Args>
+  using count_types = std::integral_constant<size_type, sizeof...(Args)>;
+
+  //---------------------------------------------------------------------------
+  template <typename ...Args>
+  struct TypeList
+  {
+    using total = std::integral_constant<size_type, sizeof...(Args)>;
+    constexpr size_type size() const noexcept { return total(); }
+
+    using type = TypeList<Args...>;
+
+    template<typename T1>  // generic template
+    struct rebind;
+
+    template<template<typename...> class TT1, typename... Args1>
+    struct rebind<TT1<Args1...>>
+    {
+      using type = typename rebind_from_template<TT1<Args1...>, TypeList<Args...>>::type;
+    };
+
+    template <typename T>
+    using rebind_t = typename rebind<T>::type;
+
+    template<typename T1>  // generic template
+    struct rebind_from;
+
+    template<template<typename...> class TT1, typename... Args1>
+    struct rebind_from<TT1<Args1...>>
+    {
+      using type = typename rebind_from_template<TypeList<Args...>, TT1<Args1...>>::type;
+    };
+
+    template <typename T>
+    using rebind_from_t = typename rebind_from<T>::type;
+
+    template <typename T>
+    struct append_type
+    {
+      using type = TypeList<Args..., T>;
+    };
+
+    template <typename... T>
+    struct prepend_type
+    {
+      using type = TypeList<T..., Args...>;
+    };
+
+    template <typename... T>
+    using append_type_t = typename append_type<T...>::type;
+
+    template <typename... T>
+    using prepend_type_t = typename prepend_type<T...>::type;
+
+    template <typename... MoreArgs>
+    struct append_type_if_unique;
+
+    // inspiration from https://stackoverflow.com/questions/13827319/eliminate-duplicate-entries-from-c11-variadic-template-arguments
+    template <typename T, typename... MoreArgs>
+    struct append_type_if_unique<T, MoreArgs...>
+    {
+      using type = std::conditional_t<
+        is_type_in_type_list_v<T, Args...>,
+        typename TypeList<Args...>:: template append_type_if_unique<MoreArgs...>::type,
+        typename TypeList<Args..., T>:: template append_type_if_unique<MoreArgs...>::type
+        >;
+    };
+
+    template<>
+    struct append_type_if_unique<>
+    {
+      using type = TypeList<Args...>;
+    };
+
+
+    template <typename... MoreArgs>
+    struct prepend_type_if_unique;
+
+    template <typename T, typename... MoreArgs>
+    struct prepend_type_if_unique<T, MoreArgs...>
+    {
+      using type = std::conditional_t<
+        is_type_in_type_list_v<T, Args...>,
+        typename TypeList<Args...>:: template prepend_type_if_unique<MoreArgs...>::type,
+        typename TypeList<T, Args...>:: template prepend_type_if_unique<MoreArgs...>::type
+      >;
+    };
+
+    template<>
+    struct prepend_type_if_unique<>
+    {
+      using type = TypeList<Args...>;
+    };
+
+    template <typename... MoreArgs>
+    using append_type_if_unique_t = typename append_type_if_unique<MoreArgs...>::type;
+
+    template <typename... MoreArgs>
+    using prepend_type_if_unique_t = typename prepend_type_if_unique<MoreArgs...>::type;
+
+  protected:
+  };
+
+  //---------------------------------------------------------------------------
+  // see https://en.cppreference.com/w/cpp/utility/variant/visit
+  template<class... Ts> struct overloaded : Ts... { overloaded(Ts&&... args) : Ts{ args }...{} using Ts::operator()...; };
+  template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
   //---------------------------------------------------------------------------
   template <typename T, class Traits = std::char_traits<T>>
-  struct is_basic_string_view : std::false_type {};
+  struct is_std_basic_string_view : std::false_type {};
 
   template <typename T, typename Traits>
-  struct is_basic_string_view<std::basic_string_view<T, Traits>> : std::true_type {};
+  struct is_std_basic_string_view<std::basic_string_view<T, Traits>> : std::true_type {};
 
   template <typename T>
-  inline constexpr bool is_basic_string_view_v = is_basic_string_view<T>::value;
+  inline constexpr bool is_std_basic_string_view_v = is_std_basic_string_view<T>::value;
 
   template <typename T>
-  struct is_deduced_basic_string_view : is_basic_string_view<std::remove_cvref_t<T>> {};
+  struct is_std_deduced_basic_string_view : is_std_basic_string_view<std::remove_cvref_t<T>> {};
 
   template <typename T>
-  inline constexpr bool is_deduced_basic_string_view_v = is_deduced_basic_string_view<T>::value;
+  inline constexpr bool is_std_deduced_basic_string_view_v = is_std_deduced_basic_string_view<T>::value;
 
 
   //---------------------------------------------------------------------------
   template <typename T, typename Traits = std::char_traits<T>, typename Alloc = std::allocator<T>>
-  struct is_basic_string : std::false_type {};
+  struct is_std_basic_string : std::false_type {};
 
   template <typename T, typename Traits, typename Alloc>
-  struct is_basic_string<std::basic_string<T, Traits, Alloc>> : std::true_type {};
+  struct is_std_basic_string<std::basic_string<T, Traits, Alloc>> : std::true_type {};
 
   template <typename T>
-  inline constexpr bool is_basic_string_v = is_basic_string<T>::value;
+  inline constexpr bool is_std_basic_string_v = is_std_basic_string<T>::value;
 
   template <typename T>
-  struct is_deduced_basic_string : is_basic_string<std::remove_cvref_t<T>> {};
+  struct is_std_deduced_basic_string : is_std_basic_string<std::remove_cvref_t<T>> {};
 
   template <typename T>
-  inline constexpr bool is_deduced_basic_string_v = is_deduced_basic_string<T>::value;
+  inline constexpr bool is_std_deduced_basic_string_v = is_std_deduced_basic_string<T>::value;
 
 
   //---------------------------------------------------------------------------
@@ -446,7 +629,6 @@ namespace zs
   inline constexpr bool is_deduced_std_priority_queue_v = is_deduced_std_vector<T>::value;
 
 
-
   //---------------------------------------------------------------------------
   template<typename T1, typename T2 = void>
   struct is_std_pair : std::false_type {};
@@ -481,7 +663,6 @@ namespace zs
   inline constexpr bool is_deduced_std_tuple_v = is_deduced_std_vector<T>::value;
 
 
-
   //---------------------------------------------------------------------------
   template<typename T, typename Deleter = std::default_delete<T>>
   struct is_std_unique_ptr : std::false_type {};
@@ -497,7 +678,6 @@ namespace zs
 
   template <typename T>
   inline constexpr bool is_deduced_std_unique_ptr_v = is_deduced_std_vector<T>::value;
-
 
 
   //---------------------------------------------------------------------------
@@ -516,23 +696,73 @@ namespace zs
   template <typename T>
   inline constexpr bool is_deduced_std_shared_ptr_v = is_deduced_std_vector<T>::value;
 
-  
+
   //---------------------------------------------------------------------------
   template<typename T>
-  struct is_zs_move_only_shared_ptr : std::false_type {};
+  struct is_move_only_shared_ptr : std::false_type {};
 
   template<typename T>
-  struct is_zs_move_only_shared_ptr<zs::move_only_shared_ptr<T>> : std::true_type {};
+  struct is_move_only_shared_ptr<zs::move_only_shared_ptr<T>> : std::true_type {};
 
   template <typename T>
-  inline constexpr bool is_zs_move_only_shared_ptr_v = is_zs_move_only_shared_ptr<T>::value;
+  inline constexpr bool is_move_only_shared_ptr_v = is_move_only_shared_ptr<T>::value;
 
   template <typename T>
-  struct is_deduced_zs_move_only_shared_ptr : is_zs_move_only_shared_ptr<std::remove_cvref_t<T>> {};
+  struct is_deduced_move_only_shared_ptr : is_move_only_shared_ptr<std::remove_cvref_t<T>> {};
 
   template <typename T>
-  inline constexpr bool is_deduced_zs_move_only_shared_ptr_v = is_deduced_std_vector<T>::value;
+  inline constexpr bool is_deduced_move_only_shared_ptr_v = is_deduced_std_vector<T>::value;
 
+
+  //---------------------------------------------------------------------------
+  template <typename T>
+  struct is_reflect_type : std::false_type {};
+
+  template <typename ...Args>
+  struct is_reflect_type<ReflectType<Args...>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_reflect_type_v = is_reflect_type<T>::value;
+
+  template <typename T>
+  struct is_deduced_reflect_type : is_reflect_type<std::remove_cvref_t<T>> {};
+
+  template <typename T>
+  inline constexpr bool is_deduced_reflect_type_v = is_deduced_reflect_type<T>::value;
+
+
+  //---------------------------------------------------------------------------
+  template <typename T>
+  struct is_reflect : std::false_type {};
+
+  template <typename ...Args>
+  struct is_reflect<Reflect<Args...>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_reflect_v = is_reflect<T>::value;
+
+  template <typename T>
+  struct is_deduced_reflect : is_reflect<std::remove_cvref_t<T>> {};
+
+  template <typename T>
+  inline constexpr bool is_deduced_reflect_v = is_deduced_reflect<T>::value;
+
+
+  //---------------------------------------------------------------------------
+  template <typename T>
+  struct is_reflect_visitor : std::false_type {};
+
+  template <typename T>
+  struct is_reflect_visitor<ReflectVisitor<T>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_reflect_visitor_v = is_reflect_visitor<T>::value;
+
+  template <typename T>
+  struct is_deduced_reflect_visitor : is_reflect_visitor<std::remove_cvref_t<T>> {};
+
+  template <typename T>
+  inline constexpr bool is_deduced_reflect_visitor_v = is_deduced_reflect_visitor<T>::value;
 
 
   //---------------------------------------------------------------------------
@@ -569,7 +799,6 @@ namespace zs
   inline constexpr bool is_deduced_std_variant_v = is_deduced_std_vector<T>::value;
 
 
-
   //---------------------------------------------------------------------------
   template <typename T>
   struct is_gsl_span : std::false_type {};
@@ -585,7 +814,6 @@ namespace zs
 
   template <typename T>
   inline constexpr bool is_deduced_gsl_span_v = is_deduced_std_vector<T>::value;
-
 
 
   //---------------------------------------------------------------------------

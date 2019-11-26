@@ -24,7 +24,7 @@ namespace zs
 
     //-------------------------------------------------------------------------
     template <typename T>
-    struct MetaDataType<T, std::enable_if_t<is_basic_string_view_v<T>>> final : public MetaDataTypeVariable
+    struct MetaDataType<T, std::enable_if_t<is_std_basic_string_view_v<T>>> final : public MetaDataTypeVariable
     {
       using type = std::remove_cvref_t<T>;
       using element_type = std::remove_cvref_t<typename type::value_type>;
@@ -54,7 +54,7 @@ namespace zs
 
     //-------------------------------------------------------------------------
     template <typename T>
-    struct MetaDataType<T, std::enable_if_t<is_basic_string_v<T>>> final : public MetaDataTypeVariable
+    struct MetaDataType<T, std::enable_if_t<is_std_basic_string_v<T>>> final : public MetaDataTypeVariable
     {
       using type = std::remove_cvref_t<T>;
       using element_type = std::remove_cvref_t<typename type::value_type>;
@@ -197,7 +197,7 @@ namespace zs
     struct MetaDataType<T, std::enable_if_t<
       is_std_unique_ptr_v<T> ||
       is_std_shared_ptr_v<T> ||
-      is_zs_move_only_shared_ptr_v<T>||
+      is_move_only_shared_ptr_v<T>||
       is_std_optional_v<T> ||
       std::is_pointer_v<T>
       >> final : public MetaDataTypeVariable

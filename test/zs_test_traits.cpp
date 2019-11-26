@@ -6,6 +6,7 @@
 #include <optional>
 #include <iostream>
 #include <vector>
+#include <variant>
 
 namespace zsTest
 {
@@ -57,11 +58,11 @@ namespace zsTest
     void test() noexcept(false)
     {
       constexpr std::string_view name{ "john smith" };
-      static_assert(!zs::is_basic_string_view_v<decltype(name)>);
-      static_assert(zs::is_deduced_basic_string_view_v<decltype(name)>);
+      static_assert(!zs::is_std_basic_string_view_v<decltype(name)>);
+      static_assert(zs::is_std_deduced_basic_string_view_v<decltype(name)>);
 
       std::string value{};
-      static_assert(zs::is_basic_string_v<decltype(value)>);
+      static_assert(zs::is_std_basic_string_v<decltype(value)>);
 
       int i = 0;
       int& ref = i;
@@ -85,6 +86,31 @@ namespace zsTest
       output(__FILE__ "::" __FUNCTION__);
     }
 
+    void testTypeList() noexcept
+    {
+      using MyTypeList1 = zs::TypeList<int>::append_type_if_unique_t<float>;
+      using MyTypeList2 = zs::TypeList<int>::prepend_type_t<int>;
+      using MyTypeList3 = zs::TypeList<int>::prepend_type_if_unique_t<int>;
+      using MyTypeList4 = zs::TypeList<>::append_type_if_unique_t<int, float, int>;
+      using MyTypeList5 = zs::TypeList<int>::prepend_type_t<float>;
+      using MyTypeList6 = zs::TypeList<int>::append_type_t<float>;
+      using MyVariant1 = typename zs::rebind_from_template<std::variant<void>, MyTypeList6>::type;
+      using MyVariant2 = typename MyTypeList6::rebind<std::variant<void>>::type;
+      using MyTypeList7 = zs::TypeList<>::rebind_from_t<std::variant<int, float>>;
+
+      static_assert(std::is_same_v<MyTypeList1, zs::TypeList<int, float>>);
+      static_assert(std::is_same_v<MyTypeList2, zs::TypeList<int, int>>);
+      static_assert(std::is_same_v<MyTypeList3, zs::TypeList<int>>);
+      static_assert(zs::is_type_in_type_list_v<int, int>);
+      static_assert(std::is_same_v<MyTypeList4, zs::TypeList<int, float>>);
+      static_assert(std::is_same_v<MyTypeList5, zs::TypeList<float, int>>);
+      static_assert(std::is_same_v<MyTypeList6, zs::TypeList<int, float>>);
+      static_assert(std::is_same_v<MyVariant1, std::variant<int, float>>);
+      static_assert(std::is_same_v<MyVariant2, std::variant<int, float>>);
+      static_assert(std::is_same_v<MyVariant1, MyVariant2>);
+      static_assert(std::is_same_v<MyTypeList7, zs::TypeList<int, float>>);
+    }
+
     //-------------------------------------------------------------------------
     void runAll() noexcept(false)
     {
@@ -92,6 +118,7 @@ namespace zsTest
 
       runner([&]() { test(); });
       runner([&]() { std::unique_ptr<int> ignored; testUniquePtrByRef(std::move(ignored)); });
+      runner([&]() { testTypeList(); });
     }
   };
 
