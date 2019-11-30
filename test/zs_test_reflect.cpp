@@ -10,8 +10,14 @@
 #include <iostream>
 #include <iomanip>
 
+namespace std
+{
+ 
+}
+
 namespace zsTest
 {
+
   //---------------------------------------------------------------------------
   //---------------------------------------------------------------------------
   //---------------------------------------------------------------------------
@@ -65,10 +71,13 @@ namespace zsTest
         std::cout << "VALUE: " << value1 << " " << value2 << "\n";
       } };
 
+      auto function4{ [](auto&& value1, auto&& value2, auto&& value3, auto&& value4) noexcept {
+        std::cout << "VALUE: " << value1 << " " << value2 << " " << value3 << " " << value4 << "\n";
+      } };
 
       constexpr Bar bar{ 1, "2", 3.3, 4.4f };
 
-      constexpr auto reflect = zs::make_reflect_from_type(bar, reflectType);
+      constexpr auto reflect{ zs::make_reflect(bar, reflectType) };
 
       auto&& value0 = reflect.get<0>();
       function(std::forward<decltype(value0)>(value0));
@@ -90,6 +99,8 @@ namespace zsTest
       reflect.visit<2, decltype(function)>(std::forward<decltype(function)>(function));
       reflect.visit<3, decltype(function)>(std::forward<decltype(function)>(function));
 
+      reflect.visit(function);
+
       auto myCallbacks{ zs::overloaded{
          [](auto arg) { std::cout << arg << ' '; },
          [](float arg) { std::cout << std::fixed << arg << ' '; },
@@ -97,12 +108,14 @@ namespace zsTest
          [](const std::string_view arg) { std::cout << std::quoted(arg) << ' '; }
       } };
 
-      std::visit([](auto&& value1, auto&& value2, auto&& value3, auto&& value4) noexcept { std::cout << "V1: " << value1 << " V2: " << value2 << " V3: " << value3 << " V4: " << value4 << "\n"; }, reflect, 0, 1, 2, 3);
+      auto front = reflect.begin();
+      std::apply(function4, reflect);
 
       // overloaded visitation
       for (const auto &elem : reflect)
       {
         std::visit(myCallbacks, elem);
+        std::visit([&](auto ...args) {(static_cast<void>(function(std::forward<decltype(args)>(args))), ...); }, elem);
 
         constexpr bool value1 = zs::is_deduced_reflect_type_v<void>;
         constexpr bool value2 = zs::is_deduced_reflect_visitor_v<decltype(elem)>;

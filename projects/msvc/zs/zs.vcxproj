@@ -30,6 +30,7 @@
     <ClInclude Include="..\..\..\move_shared_ptr.h" />
     <ClInclude Include="..\..\..\reflect.h" />
     <ClInclude Include="..\..\..\traits.h" />
+    <ClInclude Include="..\..\..\tuple_reflect.h" />
     <ClInclude Include="..\..\..\zs.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

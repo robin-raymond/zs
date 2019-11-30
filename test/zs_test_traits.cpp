@@ -88,6 +88,9 @@ namespace zsTest
 
     void testTypeList() noexcept
     {
+      using CheckVoidTypeList = typename zs::TypeList<void>::type;
+      static_assert(std::is_same_v<CheckVoidTypeList, zs::TypeList<void>>);
+
       using MyTypeList1 = zs::TypeList<int>::append_type_if_unique_t<float>;
       using MyTypeList2 = zs::TypeList<int>::prepend_type_t<int>;
       using MyTypeList3 = zs::TypeList<int>::prepend_type_if_unique_t<int>;
@@ -97,6 +100,9 @@ namespace zsTest
       using MyVariant1 = typename zs::rebind_from_template<std::variant<void>, MyTypeList6>::type;
       using MyVariant2 = typename MyTypeList6::rebind<std::variant<void>>::type;
       using MyTypeList7 = zs::TypeList<>::rebind_from_t<std::variant<int, float>>;
+      using MyTypeList8 = zs::type_list_with_modified_types_t< std::add_lvalue_reference<void>, int, float>;
+
+      using MyTypeList9 = zs::type_list_modify_all_types_t< zs::TypeList<int, float>, std::add_lvalue_reference<void>>;
 
       static_assert(std::is_same_v<MyTypeList1, zs::TypeList<int, float>>);
       static_assert(std::is_same_v<MyTypeList2, zs::TypeList<int, int>>);
@@ -109,6 +115,8 @@ namespace zsTest
       static_assert(std::is_same_v<MyVariant2, std::variant<int, float>>);
       static_assert(std::is_same_v<MyVariant1, MyVariant2>);
       static_assert(std::is_same_v<MyTypeList7, zs::TypeList<int, float>>);
+      static_assert(std::is_same_v<MyTypeList8, zs::TypeList<int&, float&>>);
+      static_assert(std::is_same_v<MyTypeList9, zs::TypeList<int&, float&>>);
     }
 
     //-------------------------------------------------------------------------

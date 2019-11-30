@@ -36,6 +36,7 @@ namespace zsTest
   void testLog() noexcept(false);
   void testTraits() noexcept(false);
   void testReflect() noexcept(false);
+  void testTupleReflect() noexcept(false);
 
   void output(std::string_view testName) noexcept;
 

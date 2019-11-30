@@ -100,6 +100,7 @@ int runAllTests() noexcept
     testLog();
     testTraits();
     testReflect();
+    testTupleReflect();
   } catch (...) {
     std::cout << "ERROR: uncaught exception thrown!\n";
     TEST(!"uncaught exception");

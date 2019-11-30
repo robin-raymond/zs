@@ -31,6 +31,7 @@
     <ClCompile Include="..\..\..\test\zs_test_move_shared_ptr.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_reflect.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_traits.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_tuple_reflect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\test\common.h" />

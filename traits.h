@@ -109,6 +109,15 @@ namespace zs
   template <typename TReflect>
   struct ReflectVisitor;
 
+  template <typename TTuple>
+  struct TupleReflectType;
+
+  template <typename TTuple>
+  struct TupleReflect;
+
+  template <typename TTupleReflect>
+  struct TupleReflectVisitor;
+
   //---------------------------------------------------------------------------
   template <typename T>
   struct remove_member_pointer
@@ -210,16 +219,77 @@ namespace zs
           return true;
       }
     };
+
+    template <typename T, typename... Args>
+    struct are_all_checker_maybe_empty {};
+
+    template<template<typename...> class TT, typename... Args1, typename... Args2>
+    struct are_all_checker_maybe_empty<TT<Args1...>, Args2...>
+    {
+      constexpr static bool is() noexcept
+      {
+        if constexpr (sizeof...(Args2) > 0)
+          return are_all_checker<TT<Args1...>, Args2...>::is();
+        else
+          return false;
+      }
+    };
   }
 
   template<typename T, typename... Args>  // generic template
   struct are_all;
 
   template<template<typename...> class TT, typename... Args1, typename... Args2>
-  struct are_all<TT<Args1...>, Args2...> : public std::conditional_t<detail::are_all_checker<TT<Args1...>, Args2...>::is(), std::true_type, std::false_type> {};
+  struct are_all<TT<Args1...>, Args2...> : public std::conditional_t<detail::are_all_checker_maybe_empty<TT<Args1...>, Args2...>::is(), std::true_type, std::false_type> {};
 
   template <typename TT, typename... Args>
   inline constexpr bool are_all_v = are_all<TT, Args...>::value;
+
+  //---------------------------------------------------------------------------
+  namespace detail
+  {
+    template <typename T, typename TCurrent, typename... Args>
+    struct are_any_checker {};
+
+    template<template<typename...> class TT, typename TCurrent, typename... Args1, typename... Args2>
+    struct are_any_checker<TT<Args1...>, TCurrent, Args2...>
+    {
+      constexpr static bool is() noexcept
+      {
+        if constexpr (!(TT<TCurrent>::value))
+          return false;
+        else if constexpr (sizeof...(Args2) > 0)
+          return are_any_checker<TT<Args1...>, Args2...>::is();
+        else
+          return true;
+      }
+    };
+
+    template <typename T, typename... Args>
+    struct are_any_checker_maybe_empty {};
+
+    template<template<typename...> class TT, typename... Args1, typename... Args2>
+    struct are_any_checker_maybe_empty<TT<Args1...>, Args2...>
+    {
+      constexpr static bool is() noexcept
+      {
+        if constexpr (sizeof...(Args2) > 0)
+          return are_any_checker_maybe_empty<TT<Args1...>, Args2...>::is();
+        else
+          return false;
+      }
+    };
+  }
+
+  template<typename T, typename... Args>  // generic template
+  struct are_any;
+
+  template<template<typename...> class TT, typename... Args1, typename... Args2>
+  struct are_any<TT<Args1...>, Args2...> : public std::conditional_t<detail::are_any_checker_maybe_empty<TT<Args1...>, Args2...>::is(), std::true_type, std::false_type> {};
+
+  template <typename TT, typename... Args>
+  inline constexpr bool are_any_v = are_any<TT, Args...>::value;
+
 
   //---------------------------------------------------------------------------
   template<typename T1, typename T2>  // generic template
@@ -237,16 +307,25 @@ namespace zs
   //---------------------------------------------------------------------------
   template <typename... Args>
   using count_types = std::integral_constant<size_type, sizeof...(Args)>;
-
+  
   template <typename... Args>
   using is_type_list_empty = std::integral_constant<bool, count_types<Args...> == 0>;
 
   template <typename... Args>
   inline constexpr bool is_type_list_empty_v = is_type_list_empty<Args...>::value;
 
-  //---------------------------------------------------------------------------
   template <typename... Args>
-  using count_types = std::integral_constant<size_type, sizeof...(Args)>;
+  inline constexpr size_type count_types_v = count_types<Args...>::value;
+
+  //---------------------------------------------------------------------------
+  template<typename T1>  // generic template
+  struct count_template_types;
+
+  template<template<typename...> class TT, typename... Args>
+  struct count_template_types<TT<Args...>> : public std::integral_constant<size_type, sizeof...(Args)> {};
+
+  template <typename T>
+  inline constexpr size_type count_template_types_v = count_template_types<T>::value;
 
   //---------------------------------------------------------------------------
   template <typename ...Args>
@@ -345,8 +424,77 @@ namespace zs
     template <typename... MoreArgs>
     using prepend_type_if_unique_t = typename prepend_type_if_unique<MoreArgs...>::type;
 
-  protected:
+
+
+    template <typename... MoreArgs>
+    struct append_changed_type;
+
+    // inspiration from https://stackoverflow.com/questions/13827319/eliminate-duplicate-entries-from-c11-variadic-template-arguments
+    template <template<typename...> class TT, typename... TTArgs, typename TCurrent, typename... MoreArgs>
+    struct append_changed_type<TT<TTArgs...>, TCurrent, MoreArgs...>
+    {
+      using type = typename TypeList<Args..., typename TT<TCurrent>::type>:: template append_changed_type<TT<TTArgs...>, MoreArgs...>::type;
+    };
+
+    template<template<typename...> class TT, typename... TTArgs>
+    struct append_changed_type<TT<TTArgs...>>
+    {
+      using type = TypeList<Args...>;
+    };
+
+    template <typename T, typename... MoreArgs>
+    using append_changed_type_t = typename append_changed_type<T, MoreArgs...>::type;
+
   };
+
+  //---------------------------------------------------------------------------
+  template <typename... Args>
+  struct type_list_with_types
+  {
+    using type = TypeList<Args...>;
+  };
+
+  template <typename... Args>
+  using type_list_with_types_t = typename type_list_with_types<Args...>::type;
+
+
+  //---------------------------------------------------------------------------
+  template <typename... Args>
+  struct type_list_with_unique_types
+  {
+    using type = typename TypeList<>::append_type_if_unique<Args...>::type;
+  };
+
+  template <typename... Args>
+  using type_list_with_unique_types_t = typename type_list_with_unique_types<Args...>::type;
+
+
+  //---------------------------------------------------------------------------
+  template <typename TT, typename... Args>
+  struct type_list_with_modified_types
+  {
+    using type = typename TypeList<>:: template append_changed_type<TT, Args...>::type;
+  };
+
+  template <typename TT, typename... Args>
+  using type_list_with_modified_types_t = typename type_list_with_modified_types<TT, Args...>::type;
+
+
+  //---------------------------------------------------------------------------
+  template <typename TTypeList, typename TT>
+  struct type_list_modify_all_types
+  {
+    using type = TTypeList;
+  };
+
+  template <typename TT, typename... Args>
+  struct type_list_modify_all_types<TypeList<Args...>, TT>
+  {
+    using type = typename TypeList<>:: template append_changed_type<TT, Args...>::type;
+  };
+
+  template <typename TTypeList, typename TT>
+  using type_list_modify_all_types_t = typename type_list_modify_all_types<TTypeList, TT>::type;
 
   //---------------------------------------------------------------------------
   // see https://en.cppreference.com/w/cpp/utility/variant/visit
@@ -792,6 +940,57 @@ namespace zs
 
   template <typename T>
   inline constexpr bool is_deduced_reflect_visitor_v = is_deduced_reflect_visitor<T>::value;
+
+
+  //---------------------------------------------------------------------------
+  template <typename T>
+  struct is_tuple_reflect_type : std::false_type {};
+
+  template <typename TTuple>
+  struct is_tuple_reflect_type<TupleReflectType<TTuple>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_tuple_reflect_type_v = is_tuple_reflect_type<T>::value;
+
+  template <typename T>
+  struct is_deduced_tuple_reflect_type : is_tuple_reflect_type<std::remove_cvref_t<T>> {};
+
+  template <typename T>
+  inline constexpr bool is_deduced_tuple_reflect_type_v = is_deduced_tuple_reflect_type<T>::value;
+
+
+  //---------------------------------------------------------------------------
+  template <typename T>
+  struct is_tuple_reflect : std::false_type {};
+
+  template <typename TTuple>
+  struct is_tuple_reflect<TupleReflect<TTuple>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_tuple_reflect_v = is_tuple_reflect<T>::value;
+
+  template <typename T>
+  struct is_deduced_tuple_reflect : is_tuple_reflect<std::remove_cvref_t<T>> {};
+
+  template <typename T>
+  inline constexpr bool is_deduced_tuple_reflect_v = is_deduced_tuple_reflect<T>::value;
+
+
+  //---------------------------------------------------------------------------
+  template <typename T>
+  struct is_tuple_reflect_visitor : std::false_type {};
+
+  template <typename T>
+  struct is_tuple_reflect_visitor<ReflectVisitor<T>> : std::true_type {};
+
+  template <typename T>
+  inline constexpr bool is_tuple_reflect_visitor_v = is_tuple_reflect_visitor<T>::value;
+
+  template <typename T>
+  struct is_deduced_tuple_reflect_visitor : is_tuple_reflect_visitor<std::remove_cvref_t<T>> {};
+
+  template <typename T>
+  inline constexpr bool is_deduced_tuple_reflect_visitor_v = is_deduced_tuple_reflect_visitor<T>::value;
 
 
   //---------------------------------------------------------------------------

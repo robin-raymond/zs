@@ -19,6 +19,7 @@
       <Filter>detail</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\reflect.h" />
+    <ClInclude Include="..\..\..\tuple_reflect.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="dependency">
