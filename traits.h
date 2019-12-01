@@ -1,99 +1,12 @@
 
 #pragma once
 
-#include <string_view>
-#include <string>
-#include <memory>
-#include <functional>
-#include <utility>
-
-#include "dependency/gsl.h"
-
-namespace std
-{
-#ifdef _MSC_VER
-#pragma warning(push)
-// see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4099
-#pragma warning(disable: 4099)
-#endif //_MSC_VER
-
-  template <typename T, std::size_t N>
-  struct array;
-
-  template <typename T, class Allocator = std::allocator<T>>
-  struct vector;
-
-  template<typename T, typename Allocator = std::allocator<T>>
-  class deque;
-
-  template<typename T, typename Container = std::deque<T>>
-  class queue;
-
-  template<typename T, typename Allocator = std::allocator<T>>
-  class list;
-
-  template<typename T, typename Allocator = std::allocator<T>>
-  class forward_list;
-
-  template<typename Key, typename Compare = std::less<Key>, typename Allocator = std::allocator<Key>>
-  class set;
-
-  template<typename Key, typename Compare = std::less<Key>, typename Allocator = std::allocator<Key>>
-  class multiset;
-
-  template<typename Key, typename T, typename Compare = std::less<Key>, typename Allocator = std::allocator<std::pair<const Key, T> >>
-  class map;
-
-  template<typename Key, typename T, typename Compare = std::less<Key>, typename Allocator = std::allocator<std::pair<const Key, T> >>
-  class multimap;
-
-  template<typename Key, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>, typename Allocator = std::allocator<Key>>
-  class unordered_set;
-
-  template<typename Key, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>, typename Allocator = std::allocator<Key>>
-  class unordered_multiset;
-
-  template<typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>, typename Allocator = std::allocator< std::pair<const Key, T> >>
-  class unordered_map;
-
-  template<typename Key, typename T, typename Hash = std::hash<Key>, typename KeyEqual = std::equal_to<Key>, typename Allocator = std::allocator< std::pair<const Key, T> >>
-  class unordered_multimap;
-
-  template<typename T, typename Container = std::deque<T>>
-  class stack;
-
-  template<typename T, typename Container = std::vector<T>, typename Compare = std::less<typename Container::value_type>>
-  class priority_queue;
-
-  template<typename T1, typename T2>
-  struct pair;
-
-  template<typename... Types>
-  class tuple;
-
-  template <typename T>
-  struct optional;
-
-  template <class... Types>
-  class variant;
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#endif //_MSC_VER
-} // namespace std
-
-namespace gsl
-{
-
-  template <typename ElementType, std::ptrdiff_t Extent>
-  class span;
-
-} // namespace gsl
+#include "detail/detail_traits.h"
 
 namespace zs
 {
   using index_type = gsl::index;
-  using size_type = std::size_t;
+  using size_type = detail::size_type;
 
   using namespace std::literals::string_view_literals;
 
@@ -156,44 +69,12 @@ namespace zs
   inline constexpr bool is_member_function_pointer_v = is_member_function_pointer<T>::value;
 
   template <typename T>
-  struct is_deducted_member_function_pointer : is_member_function_pointer<std::remove_cvref_t<T>> {};
+  struct is_deduced_member_function_pointer : is_member_function_pointer<std::remove_cvref_t<T>> {};
 
   template <class T>
-  inline constexpr bool is_deduced_member_function_pointer_v = is_deducted_member_function_pointer<T>::value;
+  inline constexpr bool is_deduced_member_function_pointer_v = is_deduced_member_function_pointer<T>::value;
 
   //---------------------------------------------------------------------------
-  namespace detail
-  {
-    struct _ImpossibleType
-    {
-    private:
-      _ImpossibleType() = delete;
-      _ImpossibleType(const _ImpossibleType&) = delete;
-      _ImpossibleType(_ImpossibleType&&) = delete;
-      ~_ImpossibleType() = delete;
-    };
-
-    //---------------------------------------------------------------------------
-    template <typename T, typename TCompareType = detail::_ImpossibleType, typename ...Args>
-    constexpr decltype(auto) is_type_in_type_list() noexcept
-    {
-      if constexpr (std::is_same_v<T, TCompareType>)
-        return true;
-      else if constexpr (sizeof...(Args) > 0)
-        return is_type_in_type_list<TCompareType, Args...>();
-      else
-        return false;
-    }
-
-    //---------------------------------------------------------------------------
-    template <typename T, typename ...Args>
-    struct type_in_type_list
-    {
-      using type = std::conditional_t<is_type_in_type_list<T, Args...>(), std::true_type, std::false_type>;
-    };
-
-  } // namespace detail
-
   template <typename T, typename ...Args>
   struct is_type_in_type_list : public detail::type_in_type_list<T, Args...>::type {};
 
@@ -201,41 +82,6 @@ namespace zs
   inline constexpr bool is_type_in_type_list_v = is_type_in_type_list<T, Args...>::value;
 
   //---------------------------------------------------------------------------
-  namespace detail
-  {
-    template <typename T, typename TCurrent, typename... Args>
-    struct are_all_checker {};
-
-    template<template<typename...> class TT, typename TCurrent, typename... Args1, typename... Args2>
-    struct are_all_checker<TT<Args1...>, TCurrent, Args2...>
-    {
-      constexpr static bool is() noexcept
-      {
-        if constexpr (!(TT<TCurrent>::value))
-          return false;
-        else if constexpr (sizeof...(Args2) > 0)
-          return are_all_checker<TT<Args1...>, Args2...>::is();
-        else
-          return true;
-      }
-    };
-
-    template <typename T, typename... Args>
-    struct are_all_checker_maybe_empty {};
-
-    template<template<typename...> class TT, typename... Args1, typename... Args2>
-    struct are_all_checker_maybe_empty<TT<Args1...>, Args2...>
-    {
-      constexpr static bool is() noexcept
-      {
-        if constexpr (sizeof...(Args2) > 0)
-          return are_all_checker<TT<Args1...>, Args2...>::is();
-        else
-          return false;
-      }
-    };
-  }
-
   template<typename T, typename... Args>  // generic template
   struct are_all;
 
@@ -246,41 +92,6 @@ namespace zs
   inline constexpr bool are_all_v = are_all<TT, Args...>::value;
 
   //---------------------------------------------------------------------------
-  namespace detail
-  {
-    template <typename T, typename TCurrent, typename... Args>
-    struct are_any_checker {};
-
-    template<template<typename...> class TT, typename TCurrent, typename... Args1, typename... Args2>
-    struct are_any_checker<TT<Args1...>, TCurrent, Args2...>
-    {
-      constexpr static bool is() noexcept
-      {
-        if constexpr (!(TT<TCurrent>::value))
-          return false;
-        else if constexpr (sizeof...(Args2) > 0)
-          return are_any_checker<TT<Args1...>, Args2...>::is();
-        else
-          return true;
-      }
-    };
-
-    template <typename T, typename... Args>
-    struct are_any_checker_maybe_empty {};
-
-    template<template<typename...> class TT, typename... Args1, typename... Args2>
-    struct are_any_checker_maybe_empty<TT<Args1...>, Args2...>
-    {
-      constexpr static bool is() noexcept
-      {
-        if constexpr (sizeof...(Args2) > 0)
-          return are_any_checker_maybe_empty<TT<Args1...>, Args2...>::is();
-        else
-          return false;
-      }
-    };
-  }
-
   template<typename T, typename... Args>  // generic template
   struct are_any;
 
@@ -295,7 +106,7 @@ namespace zs
   template<typename T1, typename T2>  // generic template
   struct rebind_from_template;
 
-  template<template<typename...> class TT1, template<typename...> class TT2, typename... Args1, typename... Args2>
+  template<template<typename...> typename TT1, template<typename...> typename TT2, typename... Args1, typename... Args2>
   struct rebind_from_template<TT1<Args1...>, TT2<Args2...>>
   {
     using type = TT1<Args2...>;
@@ -319,19 +130,70 @@ namespace zs
 
   //---------------------------------------------------------------------------
   template<typename T1>  // generic template
-  struct count_template_types;
+  struct count_template_types : public std::integral_constant<size_type, 0> {};
 
-  template<template<typename...> class TT, typename... Args>
+  template<template<typename...> typename TT, typename... Args>
   struct count_template_types<TT<Args...>> : public std::integral_constant<size_type, sizeof...(Args)> {};
 
   template <typename T>
   inline constexpr size_type count_template_types_v = count_template_types<T>::value;
 
   //---------------------------------------------------------------------------
+  template <typename TCurrent, typename... Args>
+  struct first_type
+  {
+    using type = TCurrent;
+  };
+
+  template <typename... Args>
+  using first_type_t = typename first_type<Args...>::type;
+
+
+  //---------------------------------------------------------------------------
+  template <typename TCurrent, typename... Args>
+  struct last_type
+  {
+    using type = typename last_type<Args...>::type;
+  };
+
+  template <typename TCurrent>
+  struct last_type<TCurrent>
+  {
+    using type = TCurrent;
+  };
+
+  template <typename... Args>
+  using last_type_t = typename last_type<Args...>::type;
+
+  //---------------------------------------------------------------------------
+  template <size_type I, typename... T>
+  using element = detail::element<I, T...>;
+
+  template <size_type I, typename... T>
+  using element_t = typename element<I, T...>::type;
+
+
+  //---------------------------------------------------------------------------
+  template<size_type I, typename T>
+  struct template_element
+  {
+    static_assert(I < 0, "type specified is not a templated type");
+    using type = T;
+  };
+
+  template<size_type I, template<typename...> typename TT, typename... Args>
+  struct template_element<I, TT<Args...>>
+  {
+    static_assert(I < sizeof...(Args));
+    using type = typename detail::element<I, Args...>::type;
+  };
+
+
+  //---------------------------------------------------------------------------
   template <typename ...Args>
   struct TypeList
   {
-    using total = std::integral_constant<size_type, sizeof...(Args)>;
+    inline constexpr static std::integral_constant<size_type, sizeof...(Args)> total{};
     constexpr size_type size() const noexcept { return total(); }
 
     using type = TypeList<Args...>;
@@ -348,8 +210,12 @@ namespace zs
     template <typename T>
     using rebind_t = typename rebind<T>::type;
 
-    template<typename T1>  // generic template
-    struct rebind_from;
+
+    template<typename T>  // generic template
+    struct rebind_from
+    {
+      using type = typename TypeList<T>::type;
+    };
 
     template<template<typename...> class TT1, typename... Args1>
     struct rebind_from<TT1<Args1...>>
@@ -360,16 +226,61 @@ namespace zs
     template <typename T>
     using rebind_from_t = typename rebind_from<T>::type;
 
+
+    template<typename T>  // generic template
+    struct append_from
+    {
+      using type = typename TypeList<T>::type;
+    };
+
+    template<template<typename...> class TT1, typename... Args1>
+    struct append_from<TT1<Args1...>>
+    {
+      using type = typename TypeList<Args..., Args1...>;
+    };
+
     template <typename T>
+    using append_from_t = typename append_from<T>::type;
+
+
+    template<typename T>  // generic template
+    struct prepend_from
+    {
+      using type = typename TypeList<T>::type;
+    };
+
+    template<template<typename...> class TT1, typename... Args1>
+    struct prepend_from<TT1<Args1...>>
+    {
+      using type = typename TypeList<Args1..., Args...>;
+    };
+
+    template <typename T>
+    using prepend_from_t = typename prepend_from<T>::type;
+
+
+    template <typename... T>
     struct append_type
     {
-      using type = TypeList<Args..., T>;
+      using type = TypeList<Args..., T...>;
+    };
+
+    template <>
+    struct append_type<>
+    {
+      using type = TypeList<Args...>;
     };
 
     template <typename... T>
     struct prepend_type
     {
       using type = TypeList<T..., Args...>;
+    };
+
+    template <>
+    struct prepend_type<>
+    {
+      using type = TypeList<Args...>;
     };
 
     template <typename... T>
@@ -425,11 +336,9 @@ namespace zs
     using prepend_type_if_unique_t = typename prepend_type_if_unique<MoreArgs...>::type;
 
 
-
     template <typename... MoreArgs>
     struct append_changed_type;
 
-    // inspiration from https://stackoverflow.com/questions/13827319/eliminate-duplicate-entries-from-c11-variadic-template-arguments
     template <template<typename...> class TT, typename... TTArgs, typename TCurrent, typename... MoreArgs>
     struct append_changed_type<TT<TTArgs...>, TCurrent, MoreArgs...>
     {
@@ -445,6 +354,53 @@ namespace zs
     template <typename T, typename... MoreArgs>
     using append_changed_type_t = typename append_changed_type<T, MoreArgs...>::type;
 
+    template <typename... MoreArgs>
+    struct prepend_changed_type;
+
+    template <template<typename...> class TT, typename... TTArgs, typename... MoreArgs>
+    struct prepend_changed_type<TT<TTArgs...>, MoreArgs...>
+    {
+    protected:
+      using reversable_empty_type = detail::holder_type<>;
+      using reversable_filled_type = typename detail::holder_type<>:: template append_changed_type<TT<TTArgs...>, MoreArgs...>::type;
+      using final_filled_type = typename reversable_filled_type:: template append_type<Args...>::type;
+
+    public:
+      using type = rebind_from_template_t<TypeList<>, final_filled_type>;
+    };
+
+    template<template<typename...> class TT, typename... TTArgs>
+    struct prepend_changed_type<TT<TTArgs...>>
+    {
+      using type = TypeList<Args...>;
+    };
+
+    template <typename T, typename... MoreArgs>
+    using prepend_changed_type_t = typename prepend_changed_type<T, MoreArgs...>::type;
+
+    struct reverse_type
+    {
+    protected:
+      using reversable_empty_type = detail::holder_type<>;
+      using reversable_filled_type = typename detail::holder_type<Args...>;
+      using reversed_filled_type = detail::reversable_types_t<reversable_empty_type, reversable_filled_type>;
+
+    public:
+      using type = rebind_from_template_t<TypeList<>, reversed_filled_type>;
+    };
+
+    using reverse_type_t = typename reverse_type::type;
+
+    // from https://en.cppreference.com/w/cpp/utility/tuple/tuple_element
+
+    template <size_type N>
+    struct element {
+      static_assert(N < sizeof...(Args));
+      using type = detail::element<N, Args...>;
+    };
+
+    template<size_type I>
+    using element_t = typename element<I>::type;
   };
 
   //---------------------------------------------------------------------------
@@ -1058,6 +1014,18 @@ namespace zs
   template <typename TFirst, typename TSecond>
   using largest_sized_type_t = typename largest_sized_type<TFirst, TSecond>::type;
 
-
 } // namespace zs
 
+namespace std
+{
+  //---------------------------------------------------------------------------
+  template <typename ...Args>
+  struct tuple_size<zs::TypeList<Args...>> : std::integral_constant<size_t, zs::TypeList<Args...>::total()> {};
+  
+  //---------------------------------------------------------------------------
+  template <size_t I, typename ...Args>
+  struct tuple_element<I, zs::TypeList<Args...>> {
+    using type = typename zs::TypeList<Args...>:: template element<I>::type;
+  };
+
+} // namespace std

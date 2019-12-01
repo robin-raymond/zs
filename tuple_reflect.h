@@ -368,18 +368,6 @@ namespace zs
     return result;
   }
 
-#if 0
-  //---------------------------------------------------------------------------
-  namespace detail
-  {
-    template <typename TFunction, typename TTupleReflect, size_type... N>
-    constexpr decltype(auto ) apply(TFunction&& function, TTupleReflect&& tupleReflect, std::index_sequence<N...>&&) noexcept(std::is_nothrow_invocable_v<decltype(function)>)
-    {
-      return std::invoke(std::forward<TFunction>(function), (tupleReflect.get<N>())...);
-    }
-  }
-#endif //0
-
 } // namespace zs
 
 namespace std

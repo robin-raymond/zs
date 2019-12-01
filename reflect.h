@@ -400,12 +400,12 @@ namespace std
 
   //---------------------------------------------------------------------------
   template <size_t I, typename ...Args>
-  struct tuple_element<I, zs::ReflectType<Args...>> { // recursive tuple_element definition
+  struct tuple_element<I, zs::ReflectType<Args...>> {
     using type = typename zs::ReflectType<Args...>:: template member_type<I>;
   };
 
   template <size_t I, typename TStruct, typename ...Args>
-  struct tuple_element<I, zs::Reflect<TStruct, Args...>> { // recursive tuple_element definition
+  struct tuple_element<I, zs::Reflect<TStruct, Args...>> {
     using type = typename zs::Reflect<TStruct, Args...>:: template member_type<I>;
   };
 

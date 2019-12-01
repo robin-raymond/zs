@@ -20,6 +20,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\reflect.h" />
     <ClInclude Include="..\..\..\tuple_reflect.h" />
+    <ClInclude Include="..\..\..\detail\detail_traits.h">
+      <Filter>detail</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="dependency">
