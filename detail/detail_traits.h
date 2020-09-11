@@ -86,7 +86,7 @@ namespace std
 namespace gsl
 {
 
-  template <typename ElementType, std::ptrdiff_t Extent>
+  template <class ElementType, std::size_t Extent = dynamic_extent>
   class span;
 
 } // namespace gsl
