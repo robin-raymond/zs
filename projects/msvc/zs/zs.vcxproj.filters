@@ -5,7 +5,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\zs.h" />
-    <ClInclude Include="..\..\..\move_shared_ptr.h" />
+    <ClInclude Include="..\..\..\MoveSharedPtr.h" />
     <ClInclude Include="..\..\..\log.h" />
     <ClInclude Include="..\..\..\enum.h" />
     <ClInclude Include="..\..\..\traits.h" />
@@ -19,10 +19,11 @@
       <Filter>detail</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\reflect.h" />
-    <ClInclude Include="..\..\..\tuple_reflect.h" />
+    <ClInclude Include="..\..\..\TupleReflect.h" />
     <ClInclude Include="..\..\..\detail\detail_traits.h">
       <Filter>detail</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\AutoScope.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="dependency">

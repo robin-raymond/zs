@@ -1,7 +1,4 @@
 
-#include <zs/zs.h>
-#include <zs/move_shared_ptr.h>
-
 #include <iostream>
 #include <atomic>
 #include <sstream>
@@ -101,6 +98,7 @@ int runAllTests() noexcept
     testTraits();
     testReflect();
     testTupleReflect();
+    testAutoScope();
   } catch (...) {
     std::cout << "ERROR: uncaught exception thrown!\n";
     TEST(!"uncaught exception");

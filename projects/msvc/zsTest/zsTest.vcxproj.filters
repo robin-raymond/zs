@@ -9,6 +9,7 @@
     <ClCompile Include="..\..\..\test\zs_test_traits.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_reflect.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_tuple_reflect.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_auto_scope.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\test\common.h" />

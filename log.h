@@ -812,43 +812,43 @@ namespace zs
 
 namespace std
 {
-  auto begin(zs::log::Component::all_components& comp) noexcept
+  inline auto begin(zs::log::Component::all_components& comp) noexcept
   {
     return comp.begin();
   }
 
-  auto end(zs::log::Component::all_components& comp) noexcept
+  inline auto end(zs::log::Component::all_components& comp) noexcept
   {
     return comp.end();
   }
 
-  auto cbegin(const zs::log::Component::all_components& comp) noexcept
+  inline auto cbegin(const zs::log::Component::all_components& comp) noexcept
   {
     return comp.cbegin();
   }
 
-  auto cend(const zs::log::Component::all_components& comp) noexcept
+  inline auto cend(const zs::log::Component::all_components& comp) noexcept
   {
     return comp.cend();
   }
 
 
-  auto begin(zs::log::MetaDataLogEntry::all_types& comp) noexcept
+  inline auto begin(zs::log::MetaDataLogEntry::all_types& comp) noexcept
   {
     return comp.begin();
   }
 
-  auto end(zs::log::MetaDataLogEntry::all_types& comp) noexcept
+  inline auto end(zs::log::MetaDataLogEntry::all_types& comp) noexcept
   {
     return comp.end();
   }
 
-  auto cbegin(const zs::log::MetaDataLogEntry::all_types& comp) noexcept
+  inline auto cbegin(const zs::log::MetaDataLogEntry::all_types& comp) noexcept
   {
     return comp.cbegin();
   }
 
-  auto cend(const zs::log::MetaDataLogEntry::all_types& comp) noexcept
+  inline auto cend(const zs::log::MetaDataLogEntry::all_types& comp) noexcept
   {
     return comp.cend();
   }
