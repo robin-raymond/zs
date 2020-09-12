@@ -96,6 +96,27 @@ namespace zsTest
       }
       TEST(0 == value);
 
+      {
+        auto temp{ zs::on_scope_exit([&]() noexcept { ++value; }) };
+        TEST(0 == value);
+      }
+      TEST(1 == value);
+
+      {
+        auto temp{ zs::on_scope_exit([&]() noexcept(false) { ++value; }) };
+        TEST(1 == value);
+      }
+      TEST(2 == value);
+
+      try {
+        auto temp{ zs::on_scope_exit([&]() noexcept(false) { ++value; throw std::exception{}; }) };
+        TEST(2 == value);
+      }
+      catch (const std::exception&) {
+        ++value;
+      }
+      TEST(4 == value);
+
       output(__FILE__ "::" __FUNCTION__);
     }
 

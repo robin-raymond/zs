@@ -26,7 +26,8 @@ namespace zs
     {
     }
 
-    ~AutoScope() noexcept {
+    ~AutoScope() noexcept(std::is_nothrow_invocable_v<TLambda>)
+    {
       if (!function_)
         return;
       std::invoke(function_);
@@ -67,5 +68,10 @@ namespace zs
     std::function<void()> function_;
   };
 
-} // namespace zs
+  template <typename TLambda>
+  [[nodiscard]] inline decltype(auto) on_scope_exit(TLambda&& lambda) noexcept(std::is_nothrow_invocable_v<TLambda>) //(std::is_nothrow_move_constructible<std::remove_const_t<TLambda>>::value)
+  {
+    return AutoScope{ std::move(lambda) };
+  }
 
+} // namespace zs
