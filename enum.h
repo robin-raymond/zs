@@ -317,6 +317,16 @@ namespace zs
     [[nodiscard]] constexpr static auto total() noexcept { return Total::value; }
     [[nodiscard]] constexpr auto size() const noexcept { return Total::value; }
 
+    [[nodiscard]] constexpr static auto toUnderlying(TEnumType value) noexcept
+    {
+      return static_cast<UnderlyingType>(value);
+    }
+
+    [[nodiscard]] constexpr static auto fromUnderlying(UnderlyingType value) noexcept
+    {
+      return static_cast<TEnumType>(value);
+    }
+
     [[nodiscard]] constexpr static std::string_view toString(TEnumType value) noexcept
     {
       auto found = quick_lower_bound(cbegin(sortedEntriesByEnumValue_), cend(sortedEntriesByEnumValue_), value, [](const auto& l, const auto& r) noexcept -> bool {

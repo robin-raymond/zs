@@ -612,7 +612,7 @@ namespace zsTest
       for (auto [value, name] : TEnum{}) {
         ++index;
 
-        auto useValue{ static_cast<std::underlying_type_t<decltype(value)>>(value) };
+        auto useValue{ TEnum::toUnderlying(value) };
         useValue <<= 1;
 
         if (index % 2 == 0) {
@@ -962,6 +962,46 @@ namespace zsTest
       output(__FILE__ "::" __FUNCTION__);
     }
 
+    void testUnderlying() noexcept(false)
+    {
+      enum class MyEnum : char
+      {
+        ValueA = 'A',
+        ValueDot = '.',
+        ValueNul = '\0',
+        ValueTab = '\t'
+      };
+
+
+      //-------------------------------------------------------------------------
+      struct MyEnumDeclare final : public zs::EnumDeclare<MyEnum, 4>
+      {
+        constexpr const Entries operator()() const noexcept
+        {
+          return { {
+            {MyEnum::ValueA, "A"},
+            {MyEnum::ValueDot, "."},
+            {MyEnum::ValueNul, "nul"},
+            {MyEnum::ValueTab, "tab"}
+          } };
+        }
+      };
+
+      using MyEnumTraits = zs::EnumTraits<MyEnum, MyEnumDeclare>;
+
+      auto firstUnderlyingValue = MyEnumTraits::toUnderlying(MyEnum::ValueA);
+      static_assert(sizeof(char) == sizeof(firstUnderlyingValue));
+      TEST('A' == firstUnderlyingValue);
+      TEST('.' == MyEnumTraits::toUnderlying(MyEnum::ValueDot));
+      TEST('\t' == MyEnumTraits::toUnderlying(MyEnum::ValueTab));
+      TEST('\0' == MyEnumTraits::toUnderlying(MyEnum::ValueNul));
+
+      TEST(MyEnum::ValueA == MyEnumTraits::fromUnderlying('A'));
+      TEST(MyEnum::ValueTab == MyEnumTraits::fromUnderlying('\t'));
+      TEST(MyEnum::ValueNul == MyEnumTraits::fromUnderlying('\0'));
+      TEST(MyEnum::ValueDot == MyEnumTraits::fromUnderlying('.'));
+    }
+
     //-------------------------------------------------------------------------
     void runAll() noexcept(false)
     {
@@ -973,6 +1013,7 @@ namespace zsTest
       runner([&]() { emptyTest(); });
       runner([&]() { whoIsOnTest(); });
       runner([&]() { colorsTest(); });
+      runner([&]() { testUnderlying(); });
     }
   };
 
