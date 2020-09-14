@@ -248,11 +248,11 @@ namespace zs
         return temp + (static_cast<decltype(distance)>(-1) * distance);
       }
 
-      [[nodiscard]] constexpr decltype(auto) operator+=(index_type distance) const noexcept {
+      constexpr decltype(auto) operator+=(index_type distance) const noexcept {
         value_ += (distance * VDirection);
         return *this;
       }
-      [[nodiscard]] constexpr decltype(auto) operator-=(index_type distance) const noexcept {
+      constexpr decltype(auto) operator-=(index_type distance) const noexcept {
         value_ -= (distance * VDirection);
         return *this;
       }
