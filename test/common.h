@@ -38,6 +38,7 @@ namespace zsTest
   void testReflect() noexcept(false);
   void testTupleReflect() noexcept(false);
   void testAutoScope() noexcept(false);
+  void testRandomAccessListIterator() noexcept(false);
 
   void output(std::string_view testName) noexcept;
 

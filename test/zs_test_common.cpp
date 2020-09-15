@@ -99,6 +99,7 @@ int runAllTests() noexcept
     testReflect();
     testTupleReflect();
     testAutoScope();
+    testRandomAccessListIterator();
   } catch (...) {
     std::cout << "ERROR: uncaught exception thrown!\n";
     TEST(!"uncaught exception");

@@ -10,6 +10,7 @@
     <ClCompile Include="..\..\..\test\zs_test_reflect.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_tuple_reflect.cpp" />
     <ClCompile Include="..\..\..\test\zs_test_auto_scope.cpp" />
+    <ClCompile Include="..\..\..\test\zs_test_RandomAccessListIterator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\test\common.h" />

@@ -24,6 +24,7 @@
       <Filter>detail</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\AutoScope.h" />
+    <ClInclude Include="..\..\..\RandomAccessListIterator.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="dependency">

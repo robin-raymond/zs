@@ -396,4 +396,4 @@ namespace std
     return typename zs::EnumTraits<TEnumType, TEnumDeclare>::const_reverse_iterator(e.rend());
   }
 
-} // namespace zs
+} // namespace std

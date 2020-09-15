@@ -30,6 +30,7 @@
     <ClInclude Include="..\..\..\enum.h" />
     <ClInclude Include="..\..\..\log.h" />
     <ClInclude Include="..\..\..\MoveSharedPtr.h" />
+    <ClInclude Include="..\..\..\RandomAccessListIterator.h" />
     <ClInclude Include="..\..\..\reflect.h" />
     <ClInclude Include="..\..\..\traits.h" />
     <ClInclude Include="..\..\..\TupleReflect.h" />
