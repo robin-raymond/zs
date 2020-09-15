@@ -61,6 +61,12 @@ namespace zsTest
         auto temp6{ 5 - value };
         ++temp5;
         ++temp6;
+        TEST(value.hasAhead(0));
+        TEST(value.hasBehind(0));
+        TEST(!value.hasAhead(-1));
+        TEST(!value.hasBehind(-1));
+        TEST(!value.hasAhead(1));
+        TEST(!value.hasBehind(1));
         TEST(value == temp1);
         TEST(value == temp2);
         TEST(value == temp3);
@@ -76,6 +82,7 @@ namespace zsTest
       } };
 
       auto checkData{ [&](auto value, const std::vector<std::string>& data) noexcept(false) {
+        TEST(value.hasAhead(data.size() > 0 ? data.size() -1 : 0));
         size_t count{};
         for (auto str : data) {
           TEST(value.has_value());
@@ -258,6 +265,35 @@ namespace zsTest
         checkData(temp10, std::vector<std::string>{
           "dates", "elderberry", "fig", "grapes", "honeydew",
           "imbe", "jackfruit", "kiwi", "lime", "mango", "nectarine", "orange", "pear" });
+        TEST(iter.hasAhead(15));
+        TEST(!iter.hasAhead(16));
+        TEST(iter.hasBehind(0));
+        TEST(!iter.hasBehind(1));
+        TEST(iter.hasAhead(0));
+        TEST(!iter.hasAhead(-1));
+        TEST(temp10.hasBehind(3));
+        TEST(!temp10.hasBehind(4));
+        TEST(temp10.hasAhead(-3));
+        TEST(!temp10.hasAhead(-4));
+        TEST(temp10.hasAhead(12));
+        TEST(!temp10.hasAhead(13));
+        TEST(temp10.hasBehind(-12));
+        TEST(!temp10.hasBehind(-13));
+
+        auto endIter = zs::makeRandom(get(), get().end());
+        TEST(endIter.hasAhead(0));
+        TEST(!endIter.hasAhead(1));
+        TEST(endIter.hasAhead(0));
+        TEST(endIter.hasAhead(-1));
+        TEST(endIter.hasBehind(0));
+        TEST(endIter.hasBehind(1));
+        TEST(endIter.hasBehind(0));
+        TEST(!endIter.hasBehind(-1));
+
+        TEST(endIter.hasBehind(16));
+        TEST(!endIter.hasBehind(17));
+        TEST(endIter.hasAhead(-16));
+        TEST(!endIter.hasAhead(-17));
       }
 
       {
@@ -331,6 +367,36 @@ namespace zsTest
         checkData(temp10, std::vector<std::string>{
           "dates", "elderberry", "fig", "grapes", "honeydew",
             "imbe", "jackfruit", "kiwi", "lime", "mango", "nectarine", "orange", "pear" });
+
+        TEST(iter.hasAhead(15));
+        TEST(!iter.hasAhead(16));
+        TEST(iter.hasBehind(0));
+        TEST(!iter.hasBehind(1));
+        TEST(iter.hasAhead(0));
+        TEST(!iter.hasAhead(-1));
+        TEST(temp10.hasBehind(3));
+        TEST(!temp10.hasBehind(4));
+        TEST(temp10.hasAhead(-3));
+        TEST(!temp10.hasAhead(-4));
+        TEST(temp10.hasAhead(12));
+        TEST(!temp10.hasAhead(13));
+        TEST(temp10.hasBehind(-12));
+        TEST(!temp10.hasBehind(-13));
+
+        auto endIter = zs::makeRandom(get_const(), get_const().end());
+        TEST(endIter.hasAhead(0));
+        TEST(!endIter.hasAhead(1));
+        TEST(endIter.hasAhead(0));
+        TEST(endIter.hasAhead(-1));
+        TEST(endIter.hasBehind(0));
+        TEST(endIter.hasBehind(1));
+        TEST(endIter.hasBehind(0));
+        TEST(!endIter.hasBehind(-1));
+
+        TEST(endIter.hasBehind(16));
+        TEST(!endIter.hasBehind(17));
+        TEST(endIter.hasAhead(-16));
+        TEST(!endIter.hasAhead(-17));
       }
 
       output(__FILE__ "::" __FUNCTION__);

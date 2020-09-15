@@ -165,6 +165,45 @@ struct RandomAccessListTypes
         return list_->size();
     }
 
+    [[nodiscard]] bool hasAhead(index_type size) noexcept
+    {
+      if constexpr (IsSafe::value) {
+        if (!list_)
+          return false;
+      }
+      if (size < 0)
+        return hasBehind(size * static_cast<index_type>(-1));
+      auto aheadIter = iterator_;
+      if (list_->end() == aheadIter)
+        return 0 == size;
+      ++aheadIter;
+      while (size > 0) {
+        if (list_->end() == aheadIter)
+          break;
+        --size;
+        ++aheadIter;
+      }
+      return 0 == size;
+    }
+
+    [[nodiscard]] bool hasBehind(index_type size) noexcept
+    {
+      if constexpr (IsSafe::value) {
+        if (!list_)
+          return false;
+      }
+      if (size < 0)
+        return hasAhead(size * static_cast<index_type>(-1));
+      auto behindIter = iterator_;
+      while (size > 0) {
+        if (list_->begin() == behindIter)
+          break;
+        --size;
+        --behindIter;
+      }
+      return 0 == size;
+    }
+
     Iterator& operator+=(index_type distance) noexcept
     {
       if (distance < 0)
