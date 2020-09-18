@@ -399,6 +399,18 @@ namespace zsTest
         TEST(!endIter.hasAhead(-17));
       }
 
+      {
+        reset();
+        auto& list = get();
+
+        list.push_back("apple");
+
+        auto last = std::end(list);
+        list.push_back("banana");
+        --last;
+        TEST(*last == "banana");
+      }
+
       output(__FILE__ "::" __FUNCTION__);
     }
 
